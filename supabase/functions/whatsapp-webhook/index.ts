@@ -108,7 +108,7 @@ serve(async (req) => {
         .maybeSingle();
       
       for (const msg of messages) {
-        if (!msg || msg.key?.fromMe) continue; // Skip outgoing messages
+        if (!msg) continue;
         
         const remoteJid = msg.key?.remoteJid;
         if (!remoteJid || remoteJid.includes("@g.us")) continue; // Skip groups
@@ -119,6 +119,7 @@ serve(async (req) => {
                        msg.message?.imageMessage?.caption ||
                        "[Mídia]";
         
+        const isFromMe = msg.key?.fromMe === true;
         const contactName = msg.pushName || null;
 
         // Get or create conversation
@@ -129,6 +130,38 @@ serve(async (req) => {
           .eq("phone", phone)
           .maybeSingle();
 
+        // Handle outgoing messages (sent by human via WhatsApp)
+        if (isFromMe) {
+          const outgoingMessage = {
+            id: msg.key?.id || crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            from_me: true,
+            content,
+            type: "text",
+            sent_by: "human",
+          };
+
+          if (conversation) {
+            const existingMessages = conversation.messages || [];
+            const updatedMessages = [...existingMessages, outgoingMessage];
+
+            await supabase
+              .from("whatsapp_conversations")
+              .update({
+                messages: updatedMessages,
+                last_message_at: new Date().toISOString(),
+                total_messages: updatedMessages.length,
+                ai_active: false, // Disable AI when human responds
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", conversation.id);
+
+            console.log("Outgoing message saved, AI disabled:", phone);
+          }
+          continue; // Don't trigger AI for outgoing messages
+        }
+
+        // Handle incoming messages
         const newMessage = {
           id: msg.key?.id || crypto.randomUUID(),
           timestamp: new Date().toISOString(),
