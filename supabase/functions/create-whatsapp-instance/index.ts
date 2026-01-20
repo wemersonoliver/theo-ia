@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to extract pure base64 from QR code (remove data:image prefix if present)
+function extractBase64(qrCode: string | null | undefined): string | null {
+  if (!qrCode) return null;
+  if (qrCode.startsWith('data:image')) {
+    return qrCode.split(',')[1] || null;
+  }
+  return qrCode;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -62,13 +71,6 @@ serve(async (req) => {
     // Generate instance name from user email
     const instanceName = userEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "_") + "_" + userId.slice(0, 8);
 
-    // Check if instance already exists
-    const { data: existingInstance } = await supabase
-      .from("whatsapp_instances")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-
     // Check if instance exists in Evolution API
     let instanceExists = false;
     try {
@@ -81,7 +83,7 @@ serve(async (req) => {
         
         if (state.state === "open") {
           // Already connected, update database
-          await supabase
+          const { error: upsertError } = await supabase
             .from("whatsapp_instances")
             .upsert({
               user_id: userId,
@@ -90,6 +92,10 @@ serve(async (req) => {
               qr_code_base64: null,
               updated_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
+
+          if (upsertError) {
+            console.error("Upsert error (connected):", upsertError);
+          }
 
           return new Response(JSON.stringify({ 
             success: true, 
@@ -144,22 +150,37 @@ serve(async (req) => {
       }
 
       const createData = await createResponse.json();
+      console.log("Evolution create response keys:", Object.keys(createData));
+      
+      // Extract QR code - handle different response formats
+      const qrCodeRaw = createData.qrcode?.base64 || createData.base64 || createData.qrcode || null;
+      const qrCodeBase64 = extractBase64(qrCodeRaw);
+      
+      console.log("QR Code extracted:", qrCodeBase64 ? `${qrCodeBase64.substring(0, 50)}...` : "null");
       
       // Save to database
-      await supabase
+      const { error: upsertError } = await supabase
         .from("whatsapp_instances")
         .upsert({
           user_id: userId,
           instance_name: instanceName,
-          status: createData.qrcode ? "qr_ready" : "pending",
-          qr_code_base64: createData.qrcode?.base64 || null,
+          status: qrCodeBase64 ? "qr_ready" : "pending",
+          qr_code_base64: qrCodeBase64,
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
 
+      if (upsertError) {
+        console.error("Upsert error (create):", upsertError);
+        return new Response(JSON.stringify({ error: "Erro ao salvar instância: " + upsertError.message }), { 
+          status: 500, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
       return new Response(JSON.stringify({ 
         success: true, 
-        qrCode: createData.qrcode?.base64,
-        status: "qr_ready"
+        qrCode: qrCodeBase64,
+        status: qrCodeBase64 ? "qr_ready" : "pending"
       }), { 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
@@ -180,21 +201,36 @@ serve(async (req) => {
     }
 
     const connectData = await connectResponse.json();
+    console.log("Evolution connect response keys:", Object.keys(connectData));
+    
+    // Extract QR code - handle different response formats
+    const qrCodeRaw = connectData.base64 || connectData.qrcode?.base64 || connectData.qrcode || null;
+    const qrCodeBase64 = extractBase64(qrCodeRaw);
+    
+    console.log("QR Code extracted (connect):", qrCodeBase64 ? `${qrCodeBase64.substring(0, 50)}...` : "null");
 
     // Update database with QR code
-    await supabase
+    const { error: upsertError } = await supabase
       .from("whatsapp_instances")
       .upsert({
         user_id: userId,
         instance_name: instanceName,
         status: "qr_ready",
-        qr_code_base64: connectData.base64 || null,
+        qr_code_base64: qrCodeBase64,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
 
+    if (upsertError) {
+      console.error("Upsert error (connect):", upsertError);
+      return new Response(JSON.stringify({ error: "Erro ao salvar QR Code: " + upsertError.message }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
-      qrCode: connectData.base64,
+      qrCode: qrCodeBase64,
       status: "qr_ready"
     }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" } 
