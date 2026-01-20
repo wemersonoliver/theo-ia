@@ -7,13 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useAuth } from "@/lib/auth";
-import { Settings as SettingsIcon, Key, User, Loader2 } from "lucide-react";
+import { Settings as SettingsIcon, Key, User, Loader2, Sun, Moon, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "next-themes";
 
 export default function Settings() {
   const { settings, isLoading, saveSettings } = usePlatformSettings();
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   
   const [evolutionUrl, setEvolutionUrl] = useState("");
   const [evolutionKey, setEvolutionKey] = useState("");
@@ -100,10 +102,11 @@ export default function Settings() {
       description="Gerencie as configurações do sistema"
     >
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="profile">Perfil</TabsTrigger>
-          <TabsTrigger value="api">Evolution API</TabsTrigger>
-          <TabsTrigger value="security">Segurança</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          <TabsTrigger value="profile" className="min-w-fit">Perfil</TabsTrigger>
+          <TabsTrigger value="appearance" className="min-w-fit">Aparência</TabsTrigger>
+          <TabsTrigger value="api" className="min-w-fit">API</TabsTrigger>
+          <TabsTrigger value="security" className="min-w-fit">Segurança</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -142,6 +145,54 @@ export default function Settings() {
                 {updatingProfile && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar Perfil
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="h-5 w-5" />
+                Aparência
+              </CardTitle>
+              <CardDescription>
+                Personalize a aparência do sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label>Tema</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  <Button
+                    variant={theme === "light" ? "default" : "outline"}
+                    className="flex flex-col gap-2 h-auto py-4"
+                    onClick={() => setTheme("light")}
+                  >
+                    <Sun className="h-5 w-5" />
+                    <span className="text-xs">Claro</span>
+                  </Button>
+                  <Button
+                    variant={theme === "dark" ? "default" : "outline"}
+                    className="flex flex-col gap-2 h-auto py-4"
+                    onClick={() => setTheme("dark")}
+                  >
+                    <Moon className="h-5 w-5" />
+                    <span className="text-xs">Escuro</span>
+                  </Button>
+                  <Button
+                    variant={theme === "system" ? "default" : "outline"}
+                    className="flex flex-col gap-2 h-auto py-4"
+                    onClick={() => setTheme("system")}
+                  >
+                    <Monitor className="h-5 w-5" />
+                    <span className="text-xs">Sistema</span>
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Escolha entre tema claro, escuro ou automático baseado no sistema.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
