@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import { Bot, Clock, MessageSquare, Loader2 } from "lucide-react";
+import { Bot, Clock, MessageSquare, Loader2, Key, X, Plus } from "lucide-react";
 
 const DAYS = [
   { value: 0, label: "Dom" },
@@ -38,7 +39,11 @@ export default function AIAgent() {
     initial_message_2: "",
     initial_message_3: "",
     delay_between_messages: 3,
+    trigger_keywords: [] as string[],
+    keyword_activation_enabled: false,
   });
+
+  const [newKeyword, setNewKeyword] = useState("");
 
   useEffect(() => {
     if (config) {
@@ -56,6 +61,8 @@ export default function AIAgent() {
         initial_message_2: config.initial_message_2 || "",
         initial_message_3: config.initial_message_3 || "",
         delay_between_messages: config.delay_between_messages || 3,
+        trigger_keywords: config.trigger_keywords || [],
+        keyword_activation_enabled: config.keyword_activation_enabled || false,
       });
     }
   }, [config]);
@@ -70,6 +77,24 @@ export default function AIAgent() {
       business_days: prev.business_days.includes(day)
         ? prev.business_days.filter((d) => d !== day)
         : [...prev.business_days, day].sort(),
+    }));
+  };
+
+  const handleAddKeyword = () => {
+    const keyword = newKeyword.trim().toLowerCase();
+    if (keyword && !formData.trigger_keywords.includes(keyword)) {
+      setFormData((prev) => ({
+        ...prev,
+        trigger_keywords: [...prev.trigger_keywords, keyword],
+      }));
+      setNewKeyword("");
+    }
+  };
+
+  const handleRemoveKeyword = (keyword: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      trigger_keywords: prev.trigger_keywords.filter((k) => k !== keyword),
     }));
   };
 
@@ -108,9 +133,10 @@ export default function AIAgent() {
       </Card>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="general">Configurações Gerais</TabsTrigger>
           <TabsTrigger value="hours">Horário de Funcionamento</TabsTrigger>
+          <TabsTrigger value="triggers">Gatilhos</TabsTrigger>
           <TabsTrigger value="preservice">Pré-Atendimento</TabsTrigger>
         </TabsList>
 
@@ -242,6 +268,81 @@ export default function AIAgent() {
                   rows={3}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          <Button onClick={handleSave} disabled={saveConfig.isPending}>
+            {saveConfig.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar Configurações
+          </Button>
+        </TabsContent>
+
+        <TabsContent value="triggers" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5" />
+                    Ativação por Palavras-Chave
+                  </CardTitle>
+                  <CardDescription>
+                    A IA só responderá quando o cliente usar uma dessas palavras
+                  </CardDescription>
+                </div>
+                <Switch
+                  checked={formData.keyword_activation_enabled}
+                  onCheckedChange={(checked) => setFormData({ ...formData, keyword_activation_enabled: checked })}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {formData.keyword_activation_enabled && (
+                <>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      placeholder="Digite uma palavra-chave..."
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddKeyword())}
+                    />
+                    <Button onClick={handleAddKeyword} variant="secondary">
+                      <Plus className="h-4 w-4 mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+
+                  {formData.trigger_keywords.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.trigger_keywords.map((keyword) => (
+                        <Badge key={keyword} variant="secondary" className="px-3 py-1 text-sm">
+                          {keyword}
+                          <button
+                            onClick={() => handleRemoveKeyword(keyword)}
+                            className="ml-2 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma palavra-chave cadastrada. Adicione palavras como: "atendimento", "orçamento", "ajuda", "informação"
+                    </p>
+                  )}
+
+                  <p className="text-sm text-muted-foreground mt-4">
+                    💡 Quando ativado, a IA só iniciará o atendimento se a primeira mensagem do cliente contiver uma das palavras-chave cadastradas.
+                  </p>
+                </>
+              )}
+              
+              {!formData.keyword_activation_enabled && (
+                <p className="text-sm text-muted-foreground">
+                  Ative o switch acima para configurar as palavras-chave. Quando desativado, a IA responde a todas as mensagens normalmente.
+                </p>
+              )}
             </CardContent>
           </Card>
 

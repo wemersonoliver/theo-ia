@@ -119,9 +119,11 @@ export type Database = {
           initial_message_1: string | null
           initial_message_2: string | null
           initial_message_3: string | null
+          keyword_activation_enabled: boolean | null
           max_messages_without_human: number | null
           out_of_hours_message: string | null
           pre_service_active: boolean | null
+          trigger_keywords: string[] | null
           updated_at: string | null
           user_id: string
         }
@@ -139,9 +141,11 @@ export type Database = {
           initial_message_1?: string | null
           initial_message_2?: string | null
           initial_message_3?: string | null
+          keyword_activation_enabled?: boolean | null
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          trigger_keywords?: string[] | null
           updated_at?: string | null
           user_id: string
         }
@@ -159,9 +163,11 @@ export type Database = {
           initial_message_1?: string | null
           initial_message_2?: string | null
           initial_message_3?: string | null
+          keyword_activation_enabled?: boolean | null
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          trigger_keywords?: string[] | null
           updated_at?: string | null
           user_id?: string
         }
