@@ -14,7 +14,14 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const geminiApiKey = Deno.env.get("GOOGLE_GEMINI_API_KEY")!;
+
+    if (!geminiApiKey) {
+      return new Response(JSON.stringify({ error: "GOOGLE_GEMINI_API_KEY not configured" }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -149,21 +156,32 @@ Regras importantes:
       conversationMessages.push({ role: "user", content: messageContent });
     }
 
-    // Call AI
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${lovableApiKey}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...conversationMessages,
-        ],
-      }),
-    });
+    // Call Google Gemini API directly
+    const geminiMessages = [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Entendido. Vou seguir essas instruções." }] },
+      ...conversationMessages.map((msg: any) => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
+      })),
+    ];
+
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: geminiMessages,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+          },
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) {
@@ -182,7 +200,7 @@ Regras importantes:
     }
 
     const aiData = await aiResponse.json();
-    const aiReply = aiData.choices?.[0]?.message?.content || "";
+    const aiReply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!aiReply) {
       console.error("Empty AI response");
