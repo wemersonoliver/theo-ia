@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConversations, useConversation, Message } from "@/hooks/useConversations";
-import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft } from "lucide-react";
+import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft, Power, PowerOff } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
 export default function Conversations() {
-  const { conversations, isLoading, sendMessage } = useConversations();
+  const { conversations, isLoading, sendMessage, toggleAI } = useConversations();
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const { messages } = useConversation(selectedPhone || "");
@@ -119,21 +119,49 @@ export default function Conversations() {
           {selectedPhone ? (
             <>
               <CardHeader className="border-b">
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="lg:hidden"
-                    onClick={() => setSelectedPhone(null)}
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  <div>
-                    <CardTitle>
-                      {selectedConversation?.contact_name || selectedPhone}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground">{selectedPhone}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden"
+                      onClick={() => setSelectedPhone(null)}
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div>
+                      <CardTitle>
+                        {selectedConversation?.contact_name || selectedPhone}
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground">{selectedPhone}</p>
+                    </div>
                   </div>
+                  
+                  {/* Toggle AI Button */}
+                  <Button
+                    variant={selectedConversation?.ai_active ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => toggleAI.mutate({ 
+                      phone: selectedPhone, 
+                      active: !selectedConversation?.ai_active 
+                    })}
+                    disabled={toggleAI.isPending}
+                    className="gap-2"
+                  >
+                    {toggleAI.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : selectedConversation?.ai_active ? (
+                      <>
+                        <PowerOff className="h-4 w-4" />
+                        <span className="hidden sm:inline">Desativar IA</span>
+                      </>
+                    ) : (
+                      <>
+                        <Power className="h-4 w-4" />
+                        <span className="hidden sm:inline">Reativar IA</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
@@ -200,7 +228,9 @@ export default function Conversations() {
                     </Button>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Ao enviar uma mensagem, a IA será desativada para esta conversa.
+                    {selectedConversation?.ai_active 
+                      ? "IA ativa - respondendo automaticamente" 
+                      : "IA desativada - ao enviar mensagem, você assume o atendimento"}
                   </p>
                 </div>
               </CardContent>
