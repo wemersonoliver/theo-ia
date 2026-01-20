@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import { Bot, Clock, MessageSquare, Loader2, Key, X, Plus } from "lucide-react";
+import { Bot, Clock, MessageSquare, Loader2, Key, X, Plus, Timer } from "lucide-react";
 
 const DAYS = [
   { value: 0, label: "Dom" },
@@ -41,6 +41,7 @@ export default function AIAgent() {
     delay_between_messages: 3,
     trigger_keywords: [] as string[],
     keyword_activation_enabled: false,
+    response_delay_seconds: 5,
   });
 
   const [newKeyword, setNewKeyword] = useState("");
@@ -63,6 +64,7 @@ export default function AIAgent() {
         delay_between_messages: config.delay_between_messages || 3,
         trigger_keywords: config.trigger_keywords || [],
         keyword_activation_enabled: config.keyword_activation_enabled || false,
+        response_delay_seconds: config.response_delay_seconds ?? 5,
       });
     }
   }, [config]);
@@ -185,6 +187,26 @@ export default function AIAgent() {
                 />
                 <p className="text-sm text-muted-foreground">
                   Após essa quantidade, a IA sugere transferir para humano.
+                </p>
+              </div>
+
+              <div className="space-y-2 rounded-lg border p-4 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Timer className="h-4 w-4 text-primary" />
+                  <Label htmlFor="response_delay">Tempo de espera antes de responder (segundos)</Label>
+                </div>
+                <Input
+                  id="response_delay"
+                  type="number"
+                  value={formData.response_delay_seconds}
+                  onChange={(e) => setFormData({ ...formData, response_delay_seconds: parseInt(e.target.value) || 5 })}
+                  min={0}
+                  max={60}
+                />
+                <p className="text-sm text-muted-foreground">
+                  💡 A IA aguardará esse tempo após a última mensagem do cliente antes de responder. 
+                  Isso permite que o cliente envie múltiplas mensagens seguidas sem ser "atropelado" pela IA.
+                  Use 0 para resposta imediata.
                 </p>
               </div>
 

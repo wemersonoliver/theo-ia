@@ -22,6 +22,7 @@ export interface AIConfig {
   delay_between_messages: number;
   trigger_keywords: string[];
   keyword_activation_enabled: boolean;
+  response_delay_seconds: number;
   created_at: string;
   updated_at: string;
 }

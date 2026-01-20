@@ -123,6 +123,7 @@ export type Database = {
           max_messages_without_human: number | null
           out_of_hours_message: string | null
           pre_service_active: boolean | null
+          response_delay_seconds: number | null
           trigger_keywords: string[] | null
           updated_at: string | null
           user_id: string
@@ -145,6 +146,7 @@ export type Database = {
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          response_delay_seconds?: number | null
           trigger_keywords?: string[] | null
           updated_at?: string | null
           user_id: string
@@ -167,6 +169,7 @@ export type Database = {
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          response_delay_seconds?: number | null
           trigger_keywords?: string[] | null
           updated_at?: string | null
           user_id?: string
@@ -285,6 +288,36 @@ export type Database = {
           profile_name?: string | null
           qr_code_base64?: string | null
           status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_pending_responses: {
+        Row: {
+          created_at: string | null
+          id: string
+          phone: string
+          processed: boolean | null
+          scheduled_at: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          phone: string
+          processed?: boolean | null
+          scheduled_at: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          phone?: string
+          processed?: boolean | null
+          scheduled_at?: string
           updated_at?: string | null
           user_id?: string
         }

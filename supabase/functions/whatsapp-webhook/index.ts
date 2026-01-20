@@ -100,10 +100,10 @@ serve(async (req) => {
     if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
       const messages = data?.messages || [data];
       
-      // Fetch AI config for keyword activation
+      // Fetch AI config for keyword activation and delay
       const { data: aiConfig } = await supabase
         .from("whatsapp_ai_config")
-        .select("keyword_activation_enabled, trigger_keywords, active")
+        .select("keyword_activation_enabled, trigger_keywords, active, response_delay_seconds")
         .eq("user_id", userId)
         .maybeSingle();
       
@@ -208,11 +208,11 @@ serve(async (req) => {
                 .eq("id", conversation.id);
               
               console.log("AI reactivated by keyword for:", phone);
-              await triggerAIResponse(supabase, userId, phone, content);
+              await triggerAIResponse(supabase, userId, phone, content, aiConfig?.response_delay_seconds);
             }
           } else if (conversation.ai_active) {
-            // AI already active, trigger response
-            await triggerAIResponse(supabase, userId, phone, content);
+            // AI already active, trigger response with delay
+            await triggerAIResponse(supabase, userId, phone, content, aiConfig?.response_delay_seconds);
           }
         } else {
           // New conversation - check if should activate AI
@@ -232,7 +232,7 @@ serve(async (req) => {
 
           if (shouldActivateAI) {
             console.log("AI activated for new conversation:", phone);
-            await triggerAIResponse(supabase, userId, phone, content);
+            await triggerAIResponse(supabase, userId, phone, content, aiConfig?.response_delay_seconds);
           } else {
             console.log("AI not activated (no keyword match):", phone);
           }
@@ -256,16 +256,55 @@ serve(async (req) => {
   }
 });
 
-async function triggerAIResponse(supabase: any, userId: string, phone: string, messageContent: string) {
+async function triggerAIResponse(supabase: any, userId: string, phone: string, messageContent: string, delaySeconds?: number) {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    // Call the AI agent function
+    // If delay is configured, use the debounce system
+    const delay = delaySeconds ?? 5;
+    
+    if (delay > 0) {
+      const scheduledAt = new Date(Date.now() + delay * 1000).toISOString();
+      
+      // Upsert pending response - this resets the timer on each new message
+      await supabase
+        .from("whatsapp_pending_responses")
+        .upsert({
+          user_id: userId,
+          phone,
+          scheduled_at: scheduledAt,
+          processed: false,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,phone" });
+      
+      console.log(`AI response scheduled for ${phone} in ${delay}s`);
+      
+      // Schedule the processing after delay
+      setTimeout(async () => {
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/process-pending-ai`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ userId, phone }),
+          });
+        } catch (err) {
+          console.error("Error calling process-pending-ai:", err);
+        }
+      }, delay * 1000);
+      
+      return;
+    }
+    
+    // No delay configured, call AI immediately (fallback)
     await fetch(`${supabaseUrl}/functions/v1/whatsapp-ai-agent`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        "Authorization": `Bearer ${serviceKey}`,
       },
       body: JSON.stringify({ userId, phone, messageContent }),
     });
