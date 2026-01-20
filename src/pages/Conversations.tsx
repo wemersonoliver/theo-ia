@@ -10,6 +10,7 @@ import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft, Power, PowerOff } f
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Conversations() {
   const { conversations, isLoading, sendMessage, toggleAI } = useConversations();
@@ -17,6 +18,7 @@ export default function Conversations() {
   const [messageInput, setMessageInput] = useState("");
   const { messages } = useConversation(selectedPhone || "");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -51,26 +53,141 @@ export default function Conversations() {
     );
   }
 
+  // Mobile: Chat em tela cheia
+  if (isMobile && selectedPhone) {
+    return (
+      <div className="flex h-screen flex-col bg-background">
+        {/* Header Mobile */}
+        <header className="flex items-center gap-3 border-b bg-background px-3 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSelectedPhone(null)}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-semibold truncate">
+              {selectedConversation?.contact_name || selectedPhone}
+            </h1>
+            <p className="text-xs text-muted-foreground truncate">{selectedPhone}</p>
+          </div>
+          <Button
+            variant={selectedConversation?.ai_active ? "outline" : "default"}
+            size="sm"
+            onClick={() => toggleAI.mutate({ 
+              phone: selectedPhone, 
+              active: !selectedConversation?.ai_active 
+            })}
+            disabled={toggleAI.isPending}
+          >
+            {toggleAI.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : selectedConversation?.ai_active ? (
+              <PowerOff className="h-4 w-4" />
+            ) : (
+              <Power className="h-4 w-4" />
+            )}
+          </Button>
+        </header>
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+          <div className="space-y-3">
+            {messages.map((msg, index) => (
+              <div
+                key={msg.id || index}
+                className={cn(
+                  "flex",
+                  msg.from_me ? "justify-end" : "justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-3 py-2",
+                    msg.from_me
+                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                      : "bg-muted rounded-bl-sm"
+                  )}
+                >
+                  {!msg.from_me && (
+                    <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      {msg.sent_by === "ai" || msg.sent_by === "ai_first_contact" ? (
+                        <><Bot className="h-3 w-3" /> IA</>
+                      ) : (
+                        <><User className="h-3 w-3" /> Cliente</>
+                      )}
+                    </div>
+                  )}
+                  <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                  <p className={cn(
+                    "mt-1 text-right text-xs",
+                    msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                  )}>
+                    {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        {/* Input */}
+        <div className="border-t bg-background p-3 safe-area-bottom">
+          <div className="flex gap-2">
+            <Input
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Mensagem..."
+              disabled={sendMessage.isPending}
+              className="text-base"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!messageInput.trim() || sendMessage.isPending}
+              size="icon"
+            >
+              {sendMessage.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            {selectedConversation?.ai_active ? "🤖 IA ativa" : "👤 Atendimento manual"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout 
       title="Conversas" 
       description="Visualize e responda mensagens do WhatsApp"
     >
-      <div className="grid h-[calc(100vh-180px)] gap-4 lg:grid-cols-3">
+      <div className={cn(
+        "grid gap-4",
+        isMobile ? "h-[calc(100vh-140px)]" : "h-[calc(100vh-180px)] lg:grid-cols-3"
+      )}>
         {/* Conversation List */}
-        <Card className={cn("lg:col-span-1", selectedPhone && "hidden lg:block")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Conversas
+        <Card className="lg:col-span-1">
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MessageSquare className="h-4 w-4" />
+              Conversas ({conversations.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className="h-[calc(100vh-280px)]">
+            <ScrollArea className={cn(
+              isMobile ? "h-[calc(100vh-220px)]" : "h-[calc(100vh-280px)]"
+            )}>
               {conversations.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
-                  <MessageSquare className="mx-auto h-12 w-12 opacity-30" />
-                  <p className="mt-4">Nenhuma conversa ainda</p>
+                  <MessageSquare className="mx-auto h-10 w-10 opacity-30" />
+                  <p className="mt-3 text-sm">Nenhuma conversa ainda</p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -80,28 +197,28 @@ export default function Conversations() {
                       <button
                         key={conv.id}
                         className={cn(
-                          "w-full p-4 text-left transition-colors hover:bg-muted",
+                          "w-full p-3 text-left transition-colors hover:bg-muted active:bg-muted/80",
                           selectedPhone === conv.phone && "bg-muted"
                         )}
                         onClick={() => setSelectedPhone(conv.phone)}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium truncate text-sm">
                             {conv.contact_name || conv.phone}
                           </span>
                           {conv.ai_active ? (
-                            <Badge variant="outline" className="text-xs">IA</Badge>
+                            <Badge variant="outline" className="text-xs shrink-0">IA</Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-xs">Humano</Badge>
+                            <Badge variant="secondary" className="text-xs shrink-0">Humano</Badge>
                           )}
                         </div>
                         {lastMessage && (
-                          <p className="mt-1 truncate text-sm text-muted-foreground">
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
                             {lastMessage.from_me ? "Você: " : ""}{lastMessage.content}
                           </p>
                         )}
                         {conv.last_message_at && (
-                          <p className="mt-1 text-xs text-muted-foreground">
+                          <p className="mt-1 text-xs text-muted-foreground/70">
                             {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true, locale: ptBR })}
                           </p>
                         )}
@@ -114,136 +231,125 @@ export default function Conversations() {
           </CardContent>
         </Card>
 
-        {/* Chat View */}
-        <Card className={cn("lg:col-span-2", !selectedPhone && "hidden lg:block")}>
-          {selectedPhone ? (
-            <>
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="lg:hidden"
-                      onClick={() => setSelectedPhone(null)}
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                    </Button>
+        {/* Chat View - Desktop Only */}
+        {!isMobile && (
+          <Card className="lg:col-span-2">
+            {selectedPhone ? (
+              <>
+                <CardHeader className="border-b py-3">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>
+                      <CardTitle className="text-base">
                         {selectedConversation?.contact_name || selectedPhone}
                       </CardTitle>
                       <p className="text-sm text-muted-foreground">{selectedPhone}</p>
                     </div>
-                  </div>
-                  
-                  {/* Toggle AI Button */}
-                  <Button
-                    variant={selectedConversation?.ai_active ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => toggleAI.mutate({ 
-                      phone: selectedPhone, 
-                      active: !selectedConversation?.ai_active 
-                    })}
-                    disabled={toggleAI.isPending}
-                    className="gap-2"
-                  >
-                    {toggleAI.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : selectedConversation?.ai_active ? (
-                      <>
-                        <PowerOff className="h-4 w-4" />
-                        <span className="hidden sm:inline">Desativar IA</span>
-                      </>
-                    ) : (
-                      <>
-                        <Power className="h-4 w-4" />
-                        <span className="hidden sm:inline">Reativar IA</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
-                {/* Messages */}
-                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                  <div className="space-y-4">
-                    {messages.map((msg, index) => (
-                      <div
-                        key={msg.id || index}
-                        className={cn(
-                          "flex",
-                          msg.from_me ? "justify-end" : "justify-start"
-                        )}
-                      >
-                        <div
-                          className={cn(
-                            "max-w-[80%] rounded-2xl px-4 py-2",
-                            msg.from_me
-                              ? "bg-primary text-primary-foreground rounded-br-sm"
-                              : "bg-muted rounded-bl-sm"
-                          )}
-                        >
-                          {!msg.from_me && (
-                            <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                              {msg.sent_by === "ai" || msg.sent_by === "ai_first_contact" ? (
-                                <><Bot className="h-3 w-3" /> IA</>
-                              ) : (
-                                <><User className="h-3 w-3" /> Cliente</>
-                              )}
-                            </div>
-                          )}
-                          <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
-                          <p className={cn(
-                            "mt-1 text-right text-xs",
-                            msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
-                          )}>
-                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-
-                {/* Input */}
-                <div className="border-t p-4">
-                  <div className="flex gap-2">
-                    <Input
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Digite sua mensagem..."
-                      disabled={sendMessage.isPending}
-                    />
+                    
                     <Button
-                      onClick={handleSendMessage}
-                      disabled={!messageInput.trim() || sendMessage.isPending}
+                      variant={selectedConversation?.ai_active ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => toggleAI.mutate({ 
+                        phone: selectedPhone, 
+                        active: !selectedConversation?.ai_active 
+                      })}
+                      disabled={toggleAI.isPending}
+                      className="gap-2"
                     >
-                      {sendMessage.isPending ? (
+                      {toggleAI.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : selectedConversation?.ai_active ? (
+                        <>
+                          <PowerOff className="h-4 w-4" />
+                          Desativar IA
+                        </>
                       ) : (
-                        <Send className="h-4 w-4" />
+                        <>
+                          <Power className="h-4 w-4" />
+                          Reativar IA
+                        </>
                       )}
                     </Button>
                   </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {selectedConversation?.ai_active 
-                      ? "IA ativa - respondendo automaticamente" 
-                      : "IA desativada - ao enviar mensagem, você assume o atendimento"}
-                  </p>
+                </CardHeader>
+                <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
+                  <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                    <div className="space-y-4">
+                      {messages.map((msg, index) => (
+                        <div
+                          key={msg.id || index}
+                          className={cn(
+                            "flex",
+                            msg.from_me ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "max-w-[80%] rounded-2xl px-4 py-2",
+                              msg.from_me
+                                ? "bg-primary text-primary-foreground rounded-br-sm"
+                                : "bg-muted rounded-bl-sm"
+                            )}
+                          >
+                            {!msg.from_me && (
+                              <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                                {msg.sent_by === "ai" || msg.sent_by === "ai_first_contact" ? (
+                                  <><Bot className="h-3 w-3" /> IA</>
+                                ) : (
+                                  <><User className="h-3 w-3" /> Cliente</>
+                                )}
+                              </div>
+                            )}
+                            <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                            <p className={cn(
+                              "mt-1 text-right text-xs",
+                              msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                            )}>
+                              {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="border-t p-4">
+                    <div className="flex gap-2">
+                      <Input
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyDown={handleKeyPress}
+                        placeholder="Digite sua mensagem..."
+                        disabled={sendMessage.isPending}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={!messageInput.trim() || sendMessage.isPending}
+                      >
+                        {sendMessage.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {selectedConversation?.ai_active 
+                        ? "IA ativa - respondendo automaticamente" 
+                        : "IA desativada - ao enviar mensagem, você assume o atendimento"}
+                    </p>
+                  </div>
+                </CardContent>
+              </>
+            ) : (
+              <CardContent className="flex h-full items-center justify-center">
+                <div className="text-center text-muted-foreground">
+                  <MessageSquare className="mx-auto h-16 w-16 opacity-30" />
+                  <p className="mt-4">Selecione uma conversa para visualizar</p>
                 </div>
               </CardContent>
-            </>
-          ) : (
-            <CardContent className="flex h-full items-center justify-center">
-              <div className="text-center text-muted-foreground">
-                <MessageSquare className="mx-auto h-16 w-16 opacity-30" />
-                <p className="mt-4">Selecione uma conversa para visualizar</p>
-              </div>
-            </CardContent>
-          )}
-        </Card>
+            )}
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
