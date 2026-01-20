@@ -20,6 +20,8 @@ export interface AIConfig {
   initial_message_2: string | null;
   initial_message_3: string | null;
   delay_between_messages: number;
+  trigger_keywords: string[];
+  keyword_activation_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

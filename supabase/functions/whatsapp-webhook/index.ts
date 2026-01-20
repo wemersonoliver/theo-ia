@@ -100,6 +100,13 @@ serve(async (req) => {
     if (event === "messages.upsert" || event === "MESSAGES_UPSERT") {
       const messages = data?.messages || [data];
       
+      // Fetch AI config for keyword activation
+      const { data: aiConfig } = await supabase
+        .from("whatsapp_ai_config")
+        .select("keyword_activation_enabled, trigger_keywords, active")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
       for (const msg of messages) {
         if (!msg || msg.key?.fromMe) continue; // Skip outgoing messages
         
@@ -131,6 +138,17 @@ serve(async (req) => {
           sent_by: "human",
         };
 
+        // Helper function to check if message contains trigger keywords
+        const checkKeywordActivation = (): boolean => {
+          if (!aiConfig?.keyword_activation_enabled || !aiConfig?.trigger_keywords?.length) {
+            return true; // No keyword filter, activate AI normally
+          }
+          const messageLower = content.toLowerCase();
+          return aiConfig.trigger_keywords.some((keyword: string) => 
+            messageLower.includes(keyword.toLowerCase())
+          );
+        };
+
         if (conversation) {
           const existingMessages = conversation.messages || [];
           const updatedMessages = [...existingMessages, newMessage];
@@ -146,11 +164,27 @@ serve(async (req) => {
             })
             .eq("id", conversation.id);
 
-          // Trigger AI response if active
-          if (conversation.ai_active) {
+          // Check if AI should be activated (for inactive conversations)
+          if (!conversation.ai_active && aiConfig?.keyword_activation_enabled) {
+            const hasKeyword = checkKeywordActivation();
+            if (hasKeyword) {
+              // Reactivate AI for this conversation
+              await supabase
+                .from("whatsapp_conversations")
+                .update({ ai_active: true })
+                .eq("id", conversation.id);
+              
+              console.log("AI reactivated by keyword for:", phone);
+              await triggerAIResponse(supabase, userId, phone, content);
+            }
+          } else if (conversation.ai_active) {
+            // AI already active, trigger response
             await triggerAIResponse(supabase, userId, phone, content);
           }
         } else {
+          // New conversation - check if should activate AI
+          const shouldActivateAI = checkKeywordActivation();
+
           await supabase
             .from("whatsapp_conversations")
             .insert({
@@ -160,11 +194,15 @@ serve(async (req) => {
               messages: [newMessage],
               last_message_at: new Date().toISOString(),
               total_messages: 1,
-              ai_active: true,
+              ai_active: shouldActivateAI,
             });
 
-          // Trigger AI for new conversation
-          await triggerAIResponse(supabase, userId, phone, content);
+          if (shouldActivateAI) {
+            console.log("AI activated for new conversation:", phone);
+            await triggerAIResponse(supabase, userId, phone, content);
+          } else {
+            console.log("AI not activated (no keyword match):", phone);
+          }
         }
 
         console.log("Message saved:", phone, content.slice(0, 50));
