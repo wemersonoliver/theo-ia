@@ -53,6 +53,62 @@ export default function Conversations() {
     );
   }
 
+  // Mobile: Lista de cards apenas
+  if (isMobile && !selectedPhone) {
+    return (
+      <DashboardLayout title="Conversas">
+        <div className="space-y-2">
+          {conversations.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <MessageSquare className="h-12 w-12 text-muted-foreground/30" />
+                <p className="mt-4 text-sm text-muted-foreground">Nenhuma conversa ainda</p>
+              </CardContent>
+            </Card>
+          ) : (
+            conversations.map((conv) => {
+              const lastMessage = (conv.messages as Message[])?.[conv.messages?.length - 1];
+              return (
+                <Card
+                  key={conv.id}
+                  className="cursor-pointer transition-colors hover:bg-muted/50 active:bg-muted"
+                  onClick={() => setSelectedPhone(conv.phone)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">
+                          {conv.contact_name || conv.phone}
+                        </p>
+                        {lastMessage && (
+                          <p className="mt-0.5 text-sm text-muted-foreground truncate">
+                            {lastMessage.from_me ? "Você: " : ""}{lastMessage.content}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {conv.ai_active ? (
+                          <Badge variant="outline" className="text-xs">IA</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">Humano</Badge>
+                        )}
+                        {conv.last_message_at && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true, locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   // Mobile: Chat em tela cheia
   if (isMobile && selectedPhone) {
     return (
@@ -163,15 +219,13 @@ export default function Conversations() {
     );
   }
 
+  // Desktop: Layout com lista e chat lado a lado
   return (
     <DashboardLayout 
       title="Conversas" 
       description="Visualize e responda mensagens do WhatsApp"
     >
-      <div className={cn(
-        "grid gap-4",
-        isMobile ? "h-[calc(100vh-140px)]" : "h-[calc(100vh-180px)] lg:grid-cols-3"
-      )}>
+      <div className="grid gap-4 h-[calc(100vh-180px)] lg:grid-cols-3">
         {/* Conversation List */}
         <Card className="lg:col-span-1">
           <CardHeader className="py-3">
@@ -181,9 +235,7 @@ export default function Conversations() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <ScrollArea className={cn(
-              isMobile ? "h-[calc(100vh-220px)]" : "h-[calc(100vh-280px)]"
-            )}>
+            <ScrollArea className="h-[calc(100vh-280px)]">
               {conversations.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
                   <MessageSquare className="mx-auto h-10 w-10 opacity-30" />
@@ -232,124 +284,122 @@ export default function Conversations() {
         </Card>
 
         {/* Chat View - Desktop Only */}
-        {!isMobile && (
-          <Card className="lg:col-span-2">
-            {selectedPhone ? (
-              <>
-                <CardHeader className="border-b py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base">
-                        {selectedConversation?.contact_name || selectedPhone}
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">{selectedPhone}</p>
-                    </div>
-                    
+        <Card className="lg:col-span-2">
+          {selectedPhone ? (
+            <>
+              <CardHeader className="border-b py-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">
+                      {selectedConversation?.contact_name || selectedPhone}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">{selectedPhone}</p>
+                  </div>
+                  
+                  <Button
+                    variant={selectedConversation?.ai_active ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => toggleAI.mutate({ 
+                      phone: selectedPhone, 
+                      active: !selectedConversation?.ai_active 
+                    })}
+                    disabled={toggleAI.isPending}
+                    className="gap-2"
+                  >
+                    {toggleAI.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : selectedConversation?.ai_active ? (
+                      <>
+                        <PowerOff className="h-4 w-4" />
+                        Desativar IA
+                      </>
+                    ) : (
+                      <>
+                        <Power className="h-4 w-4" />
+                        Reativar IA
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
+                <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                  <div className="space-y-4">
+                    {messages.map((msg, index) => (
+                      <div
+                        key={msg.id || index}
+                        className={cn(
+                          "flex",
+                          msg.from_me ? "justify-end" : "justify-start"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "max-w-[80%] rounded-2xl px-4 py-2",
+                            msg.from_me
+                              ? "bg-primary text-primary-foreground rounded-br-sm"
+                              : "bg-muted rounded-bl-sm"
+                          )}
+                        >
+                          {!msg.from_me && (
+                            <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
+                              {msg.sent_by === "ai" || msg.sent_by === "ai_first_contact" ? (
+                                <><Bot className="h-3 w-3" /> IA</>
+                              ) : (
+                                <><User className="h-3 w-3" /> Cliente</>
+                              )}
+                            </div>
+                          )}
+                          <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
+                          <p className={cn(
+                            "mt-1 text-right text-xs",
+                            msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
+                          )}>
+                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+
+                <div className="border-t p-4">
+                  <div className="flex gap-2">
+                    <Input
+                      value={messageInput}
+                      onChange={(e) => setMessageInput(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="Digite sua mensagem..."
+                      disabled={sendMessage.isPending}
+                    />
                     <Button
-                      variant={selectedConversation?.ai_active ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => toggleAI.mutate({ 
-                        phone: selectedPhone, 
-                        active: !selectedConversation?.ai_active 
-                      })}
-                      disabled={toggleAI.isPending}
-                      className="gap-2"
+                      onClick={handleSendMessage}
+                      disabled={!messageInput.trim() || sendMessage.isPending}
                     >
-                      {toggleAI.isPending ? (
+                      {sendMessage.isPending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : selectedConversation?.ai_active ? (
-                        <>
-                          <PowerOff className="h-4 w-4" />
-                          Desativar IA
-                        </>
                       ) : (
-                        <>
-                          <Power className="h-4 w-4" />
-                          Reativar IA
-                        </>
+                        <Send className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
-                </CardHeader>
-                <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
-                  <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-                    <div className="space-y-4">
-                      {messages.map((msg, index) => (
-                        <div
-                          key={msg.id || index}
-                          className={cn(
-                            "flex",
-                            msg.from_me ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          <div
-                            className={cn(
-                              "max-w-[80%] rounded-2xl px-4 py-2",
-                              msg.from_me
-                                ? "bg-primary text-primary-foreground rounded-br-sm"
-                                : "bg-muted rounded-bl-sm"
-                            )}
-                          >
-                            {!msg.from_me && (
-                              <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
-                                {msg.sent_by === "ai" || msg.sent_by === "ai_first_contact" ? (
-                                  <><Bot className="h-3 w-3" /> IA</>
-                                ) : (
-                                  <><User className="h-3 w-3" /> Cliente</>
-                                )}
-                              </div>
-                            )}
-                            <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
-                            <p className={cn(
-                              "mt-1 text-right text-xs",
-                              msg.from_me ? "text-primary-foreground/70" : "text-muted-foreground"
-                            )}>
-                              {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-
-                  <div className="border-t p-4">
-                    <div className="flex gap-2">
-                      <Input
-                        value={messageInput}
-                        onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyDown={handleKeyPress}
-                        placeholder="Digite sua mensagem..."
-                        disabled={sendMessage.isPending}
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        disabled={!messageInput.trim() || sendMessage.isPending}
-                      >
-                        {sendMessage.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {selectedConversation?.ai_active 
-                        ? "IA ativa - respondendo automaticamente" 
-                        : "IA desativada - ao enviar mensagem, você assume o atendimento"}
-                    </p>
-                  </div>
-                </CardContent>
-              </>
-            ) : (
-              <CardContent className="flex h-full items-center justify-center">
-                <div className="text-center text-muted-foreground">
-                  <MessageSquare className="mx-auto h-16 w-16 opacity-30" />
-                  <p className="mt-4">Selecione uma conversa para visualizar</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {selectedConversation?.ai_active 
+                      ? "IA ativa - respondendo automaticamente" 
+                      : "IA desativada - ao enviar mensagem, você assume o atendimento"}
+                  </p>
                 </div>
               </CardContent>
-            )}
-          </Card>
-        )}
+            </>
+          ) : (
+            <CardContent className="flex h-full items-center justify-center">
+              <div className="text-center text-muted-foreground">
+                <MessageSquare className="mx-auto h-16 w-16 opacity-30" />
+                <p className="mt-4">Selecione uma conversa para visualizar</p>
+              </div>
+            </CardContent>
+          )}
+        </Card>
       </div>
     </DashboardLayout>
   );
