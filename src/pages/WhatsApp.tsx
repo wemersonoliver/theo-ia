@@ -5,10 +5,27 @@ import { Badge } from "@/components/ui/badge";
 import { useWhatsAppInstance } from "@/hooks/useWhatsAppInstance";
 import { Smartphone, QrCode, Loader2, RefreshCw, Power, CheckCircle2, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function WhatsApp() {
   const { instance, isLoading, createInstance, disconnectInstance, refreshQRCode } = useWhatsAppInstance();
   const [countdown, setCountdown] = useState(30);
+  const [cachedQRCode, setCachedQRCode] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Cache QR code when new one arrives
+  useEffect(() => {
+    if (instance?.qr_code_base64) {
+      setCachedQRCode(instance.qr_code_base64);
+      setIsRefreshing(false);
+    }
+  }, [instance?.qr_code_base64]);
+
+  const handleRefreshQR = () => {
+    setIsRefreshing(true);
+    refreshQRCode.mutate();
+    setCountdown(30);
+  };
 
   // Auto-refresh QR code countdown
   useEffect(() => {
@@ -17,7 +34,7 @@ export default function WhatsApp() {
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          refreshQRCode.mutate();
+          handleRefreshQR();
           return 30;
         }
         return prev - 1;
@@ -25,7 +42,7 @@ export default function WhatsApp() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [instance?.status, refreshQRCode]);
+  }, [instance?.status]);
 
   const getStatusBadge = () => {
     switch (instance?.status) {
@@ -143,14 +160,19 @@ export default function WhatsApp() {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center">
-            {instance?.status === "qr_ready" && instance.qr_code_base64 ? (
+            {instance?.status === "qr_ready" && (cachedQRCode || instance.qr_code_base64) ? (
               <div className="space-y-4 text-center">
-                <div className="rounded-lg border bg-white p-4">
+                <div className="relative rounded-lg border bg-white p-4">
                   <img 
-                    src={`data:image/png;base64,${instance.qr_code_base64}`}
+                    src={`data:image/png;base64,${cachedQRCode || instance.qr_code_base64}`}
                     alt="QR Code"
-                    className="h-64 w-64"
+                    className={cn("h-64 w-64 transition-opacity duration-300", isRefreshing && "opacity-50")}
                   />
+                  {isRefreshing && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   QR Code expira em <span className="font-bold text-primary">{countdown}s</span>
@@ -158,13 +180,10 @@ export default function WhatsApp() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => {
-                    refreshQRCode.mutate();
-                    setCountdown(30);
-                  }}
-                  disabled={refreshQRCode.isPending}
+                  onClick={handleRefreshQR}
+                  disabled={isRefreshing}
                 >
-                  {refreshQRCode.isPending ? (
+                  {isRefreshing ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
                     <RefreshCw className="mr-2 h-4 w-4" />
