@@ -90,10 +90,32 @@ export function useConversations() {
     },
   });
 
+  const toggleAI = useMutation({
+    mutationFn: async ({ phone, active }: { phone: string; active: boolean }) => {
+      if (!user) throw new Error("Usuário não autenticado");
+      
+      const { error } = await supabase
+        .from("whatsapp_conversations")
+        .update({ ai_active: active, updated_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("phone", phone);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, { active }) => {
+      queryClient.invalidateQueries({ queryKey: ["conversations", user?.id] });
+      toast.success(active ? "IA reativada para esta conversa!" : "IA desativada para esta conversa.");
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
+
   return {
     conversations: conversations || [],
     isLoading,
     sendMessage,
+    toggleAI,
   };
 }
 
