@@ -31,7 +31,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                   <span className="sr-only">Abrir menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-64 p-0">
+              <SheetContent side="left" className="w-64 p-0" hideClose>
                 <Sidebar mobile onNavigate={() => setSidebarOpen(false)} />
               </SheetContent>
             </Sheet>
