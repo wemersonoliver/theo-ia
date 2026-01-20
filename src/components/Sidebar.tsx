@@ -24,31 +24,42 @@ const navItems = [
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mobile?: boolean;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const { signOut, user } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Em mobile, sempre mostrar expandido
+  const showFull = mobile || !collapsed;
+
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col bg-sidebar text-sidebar-foreground transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        "flex h-full flex-col bg-sidebar text-sidebar-foreground transition-all duration-300",
+        mobile ? "w-full" : (collapsed ? "w-16" : "w-64")
       )}
     >
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {!collapsed && (
+        {showFull && (
           <h1 className="text-lg font-bold text-sidebar-primary">WhatsApp AI</h1>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </Button>
+        {/* Esconder botão collapse em mobile */}
+        {!mobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -59,6 +70,7 @@ export function Sidebar() {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
                 isActive
@@ -67,7 +79,7 @@ export function Sidebar() {
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {showFull && <span>{item.label}</span>}
             </NavLink>
           );
         })}
@@ -75,19 +87,22 @@ export function Sidebar() {
 
       {/* User Section */}
       <div className="border-t border-sidebar-border p-4">
-        {!collapsed && user && (
+        {showFull && user && (
           <p className="mb-2 truncate text-sm text-sidebar-foreground/70">
             {user.email}
           </p>
         )}
         <Button
           variant="ghost"
-          size={collapsed ? "icon" : "default"}
-          onClick={() => signOut()}
+          size={showFull ? "default" : "icon"}
+          onClick={() => {
+            signOut();
+            onNavigate?.();
+          }}
           className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="ml-2">Sair</span>}
+          {showFull && <span className="ml-2">Sair</span>}
         </Button>
       </div>
     </aside>

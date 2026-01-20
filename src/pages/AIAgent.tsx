@@ -135,11 +135,11 @@ export default function AIAgent() {
       </Card>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="general">Configurações Gerais</TabsTrigger>
-          <TabsTrigger value="hours">Horário de Funcionamento</TabsTrigger>
-          <TabsTrigger value="triggers">Gatilhos</TabsTrigger>
-          <TabsTrigger value="preservice">Pré-Atendimento</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          <TabsTrigger value="general" className="min-w-fit">Geral</TabsTrigger>
+          <TabsTrigger value="hours" className="min-w-fit">Horário</TabsTrigger>
+          <TabsTrigger value="triggers" className="min-w-fit">Gatilhos</TabsTrigger>
+          <TabsTrigger value="preservice" className="min-w-fit">Pré-Atendimento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
