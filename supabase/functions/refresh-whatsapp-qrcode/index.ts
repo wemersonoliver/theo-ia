@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to extract pure base64 from QR code (remove data:image prefix if present)
+function extractBase64(qrCode: string | null | undefined): string | null {
+  if (!qrCode) return null;
+  if (qrCode.startsWith('data:image')) {
+    return qrCode.split(',')[1] || null;
+  }
+  return qrCode;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -85,20 +94,35 @@ serve(async (req) => {
     }
 
     const connectData = await connectResponse.json();
+    console.log("Evolution refresh response keys:", Object.keys(connectData));
+    
+    // Extract QR code - handle different response formats
+    const qrCodeRaw = connectData.base64 || connectData.qrcode?.base64 || connectData.qrcode || null;
+    const qrCodeBase64 = extractBase64(qrCodeRaw);
+    
+    console.log("QR Code extracted (refresh):", qrCodeBase64 ? `${qrCodeBase64.substring(0, 50)}...` : "null");
 
     // Update database
-    await supabase
+    const { error: updateError } = await supabase
       .from("whatsapp_instances")
       .update({
         status: "qr_ready",
-        qr_code_base64: connectData.base64 || null,
+        qr_code_base64: qrCodeBase64,
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId);
 
+    if (updateError) {
+      console.error("Update error:", updateError);
+      return new Response(JSON.stringify({ error: "Erro ao salvar QR Code: " + updateError.message }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
-      qrCode: connectData.base64 
+      qrCode: qrCodeBase64 
     }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" } 
     });
