@@ -114,10 +114,53 @@ serve(async (req) => {
         if (!remoteJid || remoteJid.includes("@g.us")) continue; // Skip groups
 
         const phone = remoteJid.replace("@s.whatsapp.net", "");
-        const content = msg.message?.conversation || 
-                       msg.message?.extendedTextMessage?.text ||
-                       msg.message?.imageMessage?.caption ||
-                       "[Mídia]";
+        
+        // Detect message type
+        const isAudioMessage = !!msg.message?.audioMessage;
+        const messageKey = msg.key;
+        
+        let content: string;
+        let messageType: "text" | "audio" | "image" | "video" | "document" = "text";
+        
+        if (isAudioMessage) {
+          // Transcribe audio
+          messageType = "audio";
+          try {
+            console.log("Transcribing audio message for:", phone);
+            const transcribeResponse = await fetch(
+              `${supabaseUrl}/functions/v1/transcribe-audio`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({ 
+                  messageKey, 
+                  instanceName 
+                }),
+              }
+            );
+
+            if (transcribeResponse.ok) {
+              const transcribeData = await transcribeResponse.json();
+              content = transcribeData.text || "[Áudio não transcrito]";
+              console.log("Audio transcribed:", content.slice(0, 100));
+            } else {
+              const errorText = await transcribeResponse.text();
+              console.error("Transcription failed:", errorText);
+              content = "[Áudio não transcrito]";
+            }
+          } catch (error) {
+            console.error("Transcription error:", error);
+            content = "[Áudio não transcrito]";
+          }
+        } else {
+          content = msg.message?.conversation || 
+                   msg.message?.extendedTextMessage?.text ||
+                   msg.message?.imageMessage?.caption ||
+                   "[Mídia]";
+        }
         
         const isFromMe = msg.key?.fromMe === true;
         const contactName = msg.pushName || null;
@@ -137,7 +180,7 @@ serve(async (req) => {
             timestamp: new Date().toISOString(),
             from_me: true,
             content,
-            type: "text",
+            type: messageType,
             sent_by: "human",
           };
 
@@ -167,7 +210,7 @@ serve(async (req) => {
           timestamp: new Date().toISOString(),
           from_me: false,
           content,
-          type: "text",
+          type: messageType,
           sent_by: "human",
         };
 
