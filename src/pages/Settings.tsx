@@ -5,52 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import { useAuth } from "@/lib/auth";
-import { Settings as SettingsIcon, Key, User, Loader2, Sun, Moon, Monitor } from "lucide-react";
+import { Key, User, Loader2, Sun, Moon, Monitor } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 
 export default function Settings() {
-  const { settings, isLoading, saveSettings } = usePlatformSettings();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   
-  const [evolutionUrl, setEvolutionUrl] = useState("");
-  const [evolutionKey, setEvolutionKey] = useState("");
   const [fullName, setFullName] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
-
-  useEffect(() => {
-    if (settings) {
-      setEvolutionUrl(settings.evolution_api_url || "");
-      setEvolutionKey(settings.evolution_api_key || "");
-    }
-  }, [settings]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
+      setLoading(true);
       const { data } = await supabase
         .from("profiles")
         .select("full_name")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) setFullName(data.full_name || "");
+      setLoading(false);
     };
     fetchProfile();
   }, [user]);
-
-  const handleSaveEvolution = () => {
-    saveSettings.mutate({
-      evolution_api_url: evolutionUrl,
-      evolution_api_key: evolutionKey,
-    });
-  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -80,13 +64,12 @@ export default function Settings() {
       toast.error("Erro ao atualizar senha: " + error.message);
     } else {
       toast.success("Senha atualizada!");
-      setCurrentPassword("");
       setNewPassword("");
     }
     setUpdatingPassword(false);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <DashboardLayout title="Configurações" description="Gerencie suas configurações">
         <div className="flex items-center justify-center py-12">
@@ -105,7 +88,6 @@ export default function Settings() {
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
           <TabsTrigger value="profile" className="min-w-fit">Perfil</TabsTrigger>
           <TabsTrigger value="appearance" className="min-w-fit">Aparência</TabsTrigger>
-          <TabsTrigger value="api" className="min-w-fit">API</TabsTrigger>
           <TabsTrigger value="security" className="min-w-fit">Segurança</TabsTrigger>
         </TabsList>
 
@@ -193,47 +175,6 @@ export default function Settings() {
                   Escolha entre tema claro, escuro ou automático baseado no sistema.
                 </p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="api">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <SettingsIcon className="h-5 w-5" />
-                Evolution API
-              </CardTitle>
-              <CardDescription>
-                Configure a conexão com sua Evolution API
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="evolutionUrl">URL da API</Label>
-                <Input
-                  id="evolutionUrl"
-                  value={evolutionUrl}
-                  onChange={(e) => setEvolutionUrl(e.target.value)}
-                  placeholder="https://sua-evolution-api.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="evolutionKey">API Key</Label>
-                <Input
-                  id="evolutionKey"
-                  type="password"
-                  value={evolutionKey}
-                  onChange={(e) => setEvolutionKey(e.target.value)}
-                  placeholder="Sua chave de API"
-                />
-              </div>
-
-              <Button onClick={handleSaveEvolution} disabled={saveSettings.isPending}>
-                {saveSettings.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Configurações
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>

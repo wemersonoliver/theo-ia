@@ -61,28 +61,24 @@ serve(async (req) => {
       });
     }
 
-    // Get platform settings
-    const { data: settings } = await supabase
-      .from("platform_settings")
-      .select("evolution_api_url, evolution_api_key")
-      .eq("user_id", userId)
-      .maybeSingle();
+    // Get Evolution API from global secrets
+    const evolutionUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
+    const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
 
-    if (!settings?.evolution_api_url || !settings?.evolution_api_key) {
-      return new Response(JSON.stringify({ error: "Evolution API não configurada" }), { 
-        status: 400, 
+    if (!evolutionUrl || !evolutionKey) {
+      console.error("Evolution API not configured in secrets");
+      return new Response(JSON.stringify({ error: "Erro de configuração do servidor" }), { 
+        status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
-
-    const evolutionUrl = settings.evolution_api_url.replace(/\/$/, "");
 
     // Send message via Evolution API
     const sendResponse = await fetch(`${evolutionUrl}/message/sendText/${instance.instance_name}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: settings.evolution_api_key,
+        apikey: evolutionKey,
       },
       body: JSON.stringify({
         number: phone,
