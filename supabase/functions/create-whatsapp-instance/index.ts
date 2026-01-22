@@ -49,24 +49,17 @@ serve(async (req) => {
     const userId = claimsData.user.id;
     const userEmail = claimsData.user.email || "";
 
-    // Get user's platform settings for Evolution API
-    const { data: settings } = await supabase
-      .from("platform_settings")
-      .select("evolution_api_url, evolution_api_key")
-      .eq("user_id", userId)
-      .maybeSingle();
+    // Get Evolution API from global secrets
+    const evolutionUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
+    const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
 
-    if (!settings?.evolution_api_url || !settings?.evolution_api_key) {
-      return new Response(JSON.stringify({ 
-        error: "Evolution API não configurada. Acesse Configurações para configurar." 
-      }), { 
-        status: 400, 
+    if (!evolutionUrl || !evolutionKey) {
+      console.error("Evolution API not configured in secrets");
+      return new Response(JSON.stringify({ error: "Erro de configuração do servidor" }), { 
+        status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
     }
-
-    const evolutionUrl = settings.evolution_api_url.replace(/\/$/, "");
-    const evolutionKey = settings.evolution_api_key;
 
     // Generate instance name from user email
     const instanceName = userEmail.split("@")[0].replace(/[^a-zA-Z0-9]/g, "_") + "_" + userId.slice(0, 8);

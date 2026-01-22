@@ -268,31 +268,32 @@ function delay(ms: number): Promise<void> {
 
 async function sendWhatsAppMessage(supabase: any, userId: string, phone: string, message: string) {
   try {
-    // Get instance and settings
+    // Get Evolution API from global secrets
+    const evolutionUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
+    const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
+
+    if (!evolutionUrl || !evolutionKey) {
+      console.error("Evolution API not configured in secrets");
+      return;
+    }
+
+    // Get instance
     const { data: instance } = await supabase
       .from("whatsapp_instances")
       .select("instance_name")
       .eq("user_id", userId)
       .maybeSingle();
 
-    const { data: settings } = await supabase
-      .from("platform_settings")
-      .select("evolution_api_url, evolution_api_key")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (!instance || !settings?.evolution_api_url) {
-      console.error("Instance or settings not found");
+    if (!instance) {
+      console.error("Instance not found");
       return;
     }
-
-    const evolutionUrl = settings.evolution_api_url.replace(/\/$/, "");
 
     const response = await fetch(`${evolutionUrl}/message/sendText/${instance.instance_name}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: settings.evolution_api_key,
+        apikey: evolutionKey,
       },
       body: JSON.stringify({
         number: phone,
