@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useConversations, useConversation, Message } from "@/hooks/useConversations";
-import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft, Power, PowerOff } from "lucide-react";
+import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft, Power, PowerOff, Mic } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -174,6 +174,12 @@ export default function Conversations() {
                         <><User className="h-3 w-3" /> Cliente</>
                       )}
                     </div>
+                  )}
+                  {msg.type === "audio" && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                      <Mic className="h-3 w-3" />
+                      Áudio transcrito
+                    </span>
                   )}
                   <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                   <p className={cn(
@@ -349,6 +355,12 @@ export default function Conversations() {
                                 <><User className="h-3 w-3" /> Cliente</>
                               )}
                             </div>
+                          )}
+                          {msg.type === "audio" && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                              <Mic className="h-3 w-3" />
+                              Áudio transcrito
+                            </span>
                           )}
                           <p className="whitespace-pre-wrap text-sm">{msg.content}</p>
                           <p className={cn(
