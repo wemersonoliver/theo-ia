@@ -117,6 +117,9 @@ serve(async (req) => {
         
         // Detect message type
         const isAudioMessage = !!msg.message?.audioMessage;
+        const isImageMessage = !!msg.message?.imageMessage;
+        const isDocumentMessage = !!msg.message?.documentMessage;
+        const isStickerMessage = !!msg.message?.stickerMessage;
         const messageKey = msg.key;
         
         let content: string;
@@ -155,10 +158,56 @@ serve(async (req) => {
             console.error("Transcription error:", error);
             content = "[Áudio não transcrito]";
           }
+        } else if (isImageMessage || isDocumentMessage || isStickerMessage) {
+          // Process image/document with OCR
+          messageType = isImageMessage || isStickerMessage ? "image" : "document";
+          const mediaType = isStickerMessage ? "sticker" : (isImageMessage ? "image" : "document");
+          const caption = msg.message?.imageMessage?.caption || msg.message?.documentMessage?.caption || "";
+          
+          try {
+            console.log("Processing OCR for:", phone, mediaType);
+            const ocrResponse = await fetch(
+              `${supabaseUrl}/functions/v1/process-image-ocr`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({ 
+                  messageKey, 
+                  instanceName,
+                  mediaType
+                }),
+              }
+            );
+
+            if (ocrResponse.ok) {
+              const ocrData = await ocrResponse.json();
+              const ocrText = ocrData.text || "";
+              // Combine caption with OCR text
+              if (caption && ocrText) {
+                content = `[${mediaType === "document" ? "Documento" : "Imagem"}] ${caption}\n\nConteúdo extraído:\n${ocrText}`;
+              } else if (ocrText) {
+                content = `[${mediaType === "document" ? "Documento" : "Imagem"}] Conteúdo extraído:\n${ocrText}`;
+              } else if (caption) {
+                content = `[${mediaType === "document" ? "Documento" : "Imagem"}] ${caption}`;
+              } else {
+                content = `[${mediaType === "document" ? "Documento" : "Imagem"} sem texto identificável]`;
+              }
+              console.log("OCR processed:", content.slice(0, 100));
+            } else {
+              const errorText = await ocrResponse.text();
+              console.error("OCR failed:", errorText);
+              content = caption ? `[${mediaType === "document" ? "Documento" : "Imagem"}] ${caption}` : `[${mediaType === "document" ? "Documento" : "Imagem"} não processado]`;
+            }
+          } catch (error) {
+            console.error("OCR error:", error);
+            content = caption ? `[${mediaType === "document" ? "Documento" : "Imagem"}] ${caption}` : `[${mediaType === "document" ? "Documento" : "Imagem"} não processado]`;
+          }
         } else {
           content = msg.message?.conversation || 
                    msg.message?.extendedTextMessage?.text ||
-                   msg.message?.imageMessage?.caption ||
                    "[Mídia]";
         }
         
