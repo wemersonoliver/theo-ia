@@ -6,6 +6,84 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Tool definitions for function calling
+const schedulingTools = {
+  function_declarations: [
+    {
+      name: "check_available_slots",
+      description: "Verifica horários disponíveis para agendamento em uma data específica. Use quando o cliente perguntar sobre disponibilidade ou quiser agendar.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "Data para verificar disponibilidade no formato YYYY-MM-DD"
+          }
+        },
+        required: ["date"]
+      }
+    },
+    {
+      name: "create_appointment",
+      description: "Cria um novo agendamento após confirmar data, horário e serviço com o cliente.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "Data do agendamento no formato YYYY-MM-DD"
+          },
+          time: {
+            type: "string",
+            description: "Horário do agendamento no formato HH:MM"
+          },
+          title: {
+            type: "string",
+            description: "Tipo de serviço ou título do agendamento"
+          },
+          description: {
+            type: "string",
+            description: "Detalhes adicionais ou observações"
+          }
+        },
+        required: ["date", "time", "title"]
+      }
+    },
+    {
+      name: "cancel_appointment",
+      description: "Cancela um agendamento existente do cliente.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "Data do agendamento a cancelar no formato YYYY-MM-DD"
+          },
+          time: {
+            type: "string",
+            description: "Horário do agendamento a cancelar no formato HH:MM"
+          }
+        },
+        required: ["date", "time"]
+      }
+    },
+    {
+      name: "list_appointments",
+      description: "Lista os agendamentos do cliente.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "Data opcional para filtrar agendamentos no formato YYYY-MM-DD"
+          }
+        },
+        required: []
+      }
+    }
+  ]
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -25,7 +103,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, phone, messageContent } = await req.json();
+    const { userId, phone, messageContent, contactName } = await req.json();
 
     if (!userId || !phone) {
       return new Response(JSON.stringify({ error: "Missing parameters" }), { 
@@ -63,7 +141,6 @@ serve(async (req) => {
     const businessDays = aiConfig.business_days || [1, 2, 3, 4, 5];
 
     if (!businessDays.includes(currentDay) || currentTime < startTime || currentTime > endTime) {
-      // Outside business hours
       if (aiConfig.out_of_hours_message) {
         await sendWhatsAppMessage(supabase, userId, phone, aiConfig.out_of_hours_message);
         await saveAIMessage(supabase, userId, phone, aiConfig.out_of_hours_message, "ai");
@@ -130,81 +207,144 @@ serve(async (req) => {
 
     const knowledgeBase = documents?.map(d => d.content_text).filter(Boolean).join("\n\n---\n\n") || "";
 
-    // Build system prompt
+    // Get today's date for context
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+    const todayFormatted = today.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+
+    // Build system prompt with scheduling capabilities
     const systemPrompt = `Você é ${aiConfig.agent_name || "um assistente virtual"} de atendimento via WhatsApp.
 
 ${aiConfig.custom_prompt || "Seja cordial, profissional e prestativo."}
 
-${knowledgeBase ? `Use a seguinte base de conhecimento para responder:\n\n${knowledgeBase.slice(0, 8000)}` : ""}
+${knowledgeBase ? `Use a seguinte base de conhecimento para responder:\n\n${knowledgeBase.slice(0, 6000)}` : ""}
+
+IMPORTANTE - AGENDAMENTOS:
+Você tem acesso a ferramentas para gerenciar agendamentos. Quando o cliente:
+- Perguntar sobre disponibilidade ou horários: Use check_available_slots
+- Quiser marcar/agendar algo: Primeiro verifique disponibilidade, depois use create_appointment
+- Quiser cancelar um agendamento: Use cancel_appointment
+- Quiser ver seus agendamentos: Use list_appointments
+
+Hoje é ${todayFormatted} (${todayStr}).
+Ao mencionar datas, converta para o formato YYYY-MM-DD para as funções.
+Exemplos: "amanhã" = dia seguinte, "segunda" = próxima segunda-feira.
 
 Regras importantes:
-- Responda de forma natural e conversacional, como se fosse um atendente humano
-- Seja objetivo e direto, evite respostas muito longas
+- Responda de forma natural e conversacional
+- Seja objetivo e direto
 - Use emojis com moderação
 - Se não souber a resposta, diga que vai verificar com a equipe
-- Nunca invente informações que não estejam na base de conhecimento
-- Responda sempre em português brasileiro`;
+- Nunca invente informações
+- Responda sempre em português brasileiro
+- Ao agendar, sempre confirme data, horário e serviço antes de finalizar`;
 
     // Build conversation messages
     const conversationMessages = recentMessages.map((msg: any) => ({
-      role: msg.from_me ? "assistant" : "user",
-      content: msg.content,
+      role: msg.from_me ? "model" : "user",
+      parts: [{ text: msg.content }],
     }));
 
-    // Add current message if not already in history
-    if (!conversationMessages.length || conversationMessages[conversationMessages.length - 1].content !== messageContent) {
-      conversationMessages.push({ role: "user", content: messageContent });
-    }
+    // Add current message
+    conversationMessages.push({ role: "user", parts: [{ text: messageContent }] });
 
-    // Call Google Gemini API directly
-    const geminiMessages = [
-      { role: "user", parts: [{ text: systemPrompt }] },
-      { role: "model", parts: [{ text: "Entendido. Vou seguir essas instruções." }] },
-      ...conversationMessages.map((msg: any) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
-    ];
+    // Call Gemini with function calling
+    const geminiPayload = {
+      contents: [
+        { role: "user", parts: [{ text: systemPrompt }] },
+        { role: "model", parts: [{ text: "Entendido. Vou seguir essas instruções e usar as ferramentas de agendamento quando necessário." }] },
+        ...conversationMessages,
+      ],
+      tools: [schedulingTools],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    };
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: geminiMessages,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 1024,
-          },
-        }),
-      }
-    );
+    let aiReply = "";
+    let functionCallsProcessed = 0;
+    const maxFunctionCalls = 3;
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        console.error("AI rate limit exceeded");
-        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { 
-          status: 429, 
+    while (functionCallsProcessed < maxFunctionCalls) {
+      const aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(geminiPayload),
+        }
+      );
+
+      if (!aiResponse.ok) {
+        if (aiResponse.status === 429) {
+          console.error("AI rate limit exceeded");
+          return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { 
+            status: 429, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+        const errorText = await aiResponse.text();
+        console.error("AI error:", errorText);
+        return new Response(JSON.stringify({ error: "AI error" }), { 
+          status: 500, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
         });
       }
-      const errorText = await aiResponse.text();
-      console.error("AI error:", errorText);
-      return new Response(JSON.stringify({ error: "AI error" }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
-      });
+
+      const aiData = await aiResponse.json();
+      const candidate = aiData.candidates?.[0];
+      const content = candidate?.content;
+
+      if (!content?.parts) {
+        console.error("Empty AI response");
+        break;
+      }
+
+      // Check for function calls
+      const functionCall = content.parts.find((p: any) => p.functionCall);
+      
+      if (functionCall) {
+        const fc = functionCall.functionCall;
+        console.log("Function call:", fc.name, fc.args);
+        
+        // Execute the function
+        const functionResult = await executeFunction(supabase, supabaseUrl, fc.name, {
+          ...fc.args,
+          userId,
+          phone,
+          contactName,
+        });
+
+        console.log("Function result:", functionResult);
+
+        // Add function call and result to context
+        geminiPayload.contents.push(content);
+        geminiPayload.contents.push({
+          role: "user",
+          parts: [{
+            functionResponse: {
+              name: fc.name,
+              response: functionResult,
+            }
+          }]
+        });
+
+        functionCallsProcessed++;
+        continue;
+      }
+
+      // No function call, get text response
+      const textPart = content.parts.find((p: any) => p.text);
+      if (textPart) {
+        aiReply = textPart.text;
+      }
+      break;
     }
 
-    const aiData = await aiResponse.json();
-    const aiReply = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
     if (!aiReply) {
-      console.error("Empty AI response");
-      return new Response(JSON.stringify({ error: "Empty AI response" }), { 
+      console.error("No AI reply generated");
+      return new Response(JSON.stringify({ error: "No AI response" }), { 
         status: 500, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
@@ -251,14 +391,40 @@ Regras importantes:
   }
 });
 
+async function executeFunction(supabase: any, supabaseUrl: string, name: string, args: any): Promise<any> {
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/manage-appointment`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        operation: name === "check_available_slots" ? "check_availability" : name,
+        userId: args.userId,
+        phone: args.phone,
+        contactName: args.contactName,
+        date: args.date,
+        time: args.time,
+        title: args.title,
+        description: args.description,
+      }),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("Function execution error:", error);
+    return { error: "Erro ao executar função", message: error instanceof Error ? error.message : "Unknown error" };
+  }
+}
+
 function splitMessage(text: string): string[] {
-  // Split on double newlines or if text is very long
   if (text.length < 200) return [text];
   
   const parts = text.split(/\n\n+/).filter(p => p.trim());
-  if (parts.length > 1) return parts.slice(0, 3); // Max 3 parts
+  if (parts.length > 1) return parts.slice(0, 3);
   
-  // If no natural breaks, return as-is
   return [text];
 }
 
@@ -268,7 +434,6 @@ function delay(ms: number): Promise<void> {
 
 async function sendWhatsAppMessage(supabase: any, userId: string, phone: string, message: string) {
   try {
-    // Get Evolution API from global secrets
     const evolutionUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
     const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
 
@@ -277,7 +442,6 @@ async function sendWhatsAppMessage(supabase: any, userId: string, phone: string,
       return;
     }
 
-    // Get instance
     const { data: instance } = await supabase
       .from("whatsapp_instances")
       .select("instance_name")
