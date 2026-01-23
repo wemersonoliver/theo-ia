@@ -11,6 +11,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Calendar,
+  CalendarCog,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -21,6 +23,8 @@ const navItems = [
   { to: "/ai-agent", icon: Bot, label: "Agente IA" },
   { to: "/knowledge-base", icon: FileText, label: "Base de Conhecimento" },
   { to: "/conversations", icon: MessageSquare, label: "Conversas" },
+  { to: "/appointments", icon: Calendar, label: "Agendamentos" },
+  { to: "/appointment-settings", icon: CalendarCog, label: "Config. Horários" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 
