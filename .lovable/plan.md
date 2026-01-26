@@ -1,304 +1,225 @@
 
 
-## Plano: Sistema de Calendário e Agendamento para IA
+## Plano: Corrigir Bug de Function Calling e Garantir Agendamento Funcional
 
-### Objetivo
-Implementar um sistema de calendário integrado que permite à IA agendar consultas, reuniões ou atendimentos diretamente via WhatsApp. Ideal para clínicas médicas, escritórios de advocacia, consultórios, salões de beleza e outros negócios que dependem de agendamentos.
+### Problema Identificado
 
----
-
-### Visão Geral da Arquitetura
+Analisando a conversa com 554799491328, identifiquei o problema:
 
 ```text
-+------------------+     +-------------------+     +------------------+
-|  WhatsApp Msg    | --> |   AI Agent        | --> |  appointments    |
-|  "Quero agendar" |     |   (Gemini)        |     |  (nova tabela)   |
-+------------------+     +-------------------+     +------------------+
-                               |
-                               v
-                    +---------------------+
-                    |  Function Calling   |
-                    |  (Tool: schedule)   |
-                    +---------------------+
-                               |
-                               v
-                    +---------------------+
-                    |  manage-appointment |
-                    |  (Edge Function)    |
-                    +---------------------+
+Cliente: "isso" (confirmando agendamento)
+IA enviou: print(default_api.check_available_slots(date='2026-01-27'))
+Cliente: "o que é isso?"
+IA: "Desculpe pela mensagem anterior..."
 ```
+
+**Causa Raiz**: O modelo Gemini está gerando texto com sintaxe Python/código ao invés de usar a estrutura `functionCall` do Gemini. O código atual não filtra essa resposta e envia diretamente ao cliente.
+
+**Resultado**: Nenhum agendamento foi criado no banco de dados.
 
 ---
 
-### Passo 1: Criar Tabela de Agendamentos
+### Solucao Completa
 
-**Nova tabela: `appointments`**
+A correção envolve modificar `supabase/functions/whatsapp-ai-agent/index.ts` para:
 
-```sql
-CREATE TABLE public.appointments (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  phone TEXT NOT NULL,
-  contact_name TEXT,
-  title TEXT NOT NULL,
-  description TEXT,
-  appointment_date DATE NOT NULL,
-  appointment_time TIME NOT NULL,
-  duration_minutes INTEGER DEFAULT 30,
-  status TEXT DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'confirmed', 'cancelled', 'completed')),
-  notes TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+#### 1. Detectar Codigo na Resposta
 
--- Index para queries por data
-CREATE INDEX idx_appointments_user_date ON public.appointments(user_id, appointment_date);
-CREATE INDEX idx_appointments_phone ON public.appointments(user_id, phone);
-
--- RLS Policy
-ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage their own appointments"
-  ON public.appointments FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
--- Trigger para updated_at
-CREATE TRIGGER update_appointments_updated_at
-  BEFORE UPDATE ON public.appointments
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-```
-
----
-
-### Passo 2: Tabela de Configuracao de Horarios Disponiveis
-
-**Nova tabela: `appointment_slots`**
-
-```sql
-CREATE TABLE public.appointment_slots (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  slot_duration_minutes INTEGER DEFAULT 30,
-  max_appointments_per_slot INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
-  UNIQUE(user_id, day_of_week, start_time)
-);
-
-ALTER TABLE public.appointment_slots ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage their own slots"
-  ON public.appointment_slots FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-```
-
----
-
-### Passo 3: Criar Edge Function para Gerenciar Agendamentos
-
-**Novo arquivo: `supabase/functions/manage-appointment/index.ts`**
-
-Esta funcao sera chamada pela IA via function calling para:
-- Verificar horarios disponiveis
-- Criar novos agendamentos
-- Cancelar/reagendar
+Adicionar funcao para identificar se a resposta contem sintaxe de codigo:
 
 ```typescript
-// Operacoes suportadas:
-// - check_availability: { date: string }
-// - create_appointment: { phone, contact_name, date, time, title, description? }
-// - cancel_appointment: { appointment_id }
-// - list_appointments: { phone?, date? }
-```
-
----
-
-### Passo 4: Atualizar AI Agent com Function Calling
-
-**Modificar: `supabase/functions/whatsapp-ai-agent/index.ts`**
-
-Adicionar suporte a function calling do Gemini para que a IA possa:
-
-1. Reconhecer intencao de agendamento
-2. Consultar horarios disponiveis
-3. Criar o agendamento
-4. Confirmar com o cliente
-
-```typescript
-// Definir tools para o Gemini
-const tools = [{
-  functionDeclarations: [{
-    name: "check_available_slots",
-    description: "Verifica horarios disponiveis para agendamento em uma data especifica",
-    parameters: {
-      type: "object",
-      properties: {
-        date: { type: "string", description: "Data no formato YYYY-MM-DD" }
-      },
-      required: ["date"]
-    }
-  }, {
-    name: "create_appointment",
-    description: "Cria um novo agendamento",
-    parameters: {
-      type: "object",
-      properties: {
-        date: { type: "string", description: "Data no formato YYYY-MM-DD" },
-        time: { type: "string", description: "Horario no formato HH:MM" },
-        title: { type: "string", description: "Tipo de servico ou consulta" },
-        description: { type: "string", description: "Detalhes adicionais" }
-      },
-      required: ["date", "time", "title"]
-    }
-  }, {
-    name: "cancel_appointment",
-    description: "Cancela um agendamento existente",
-    parameters: {
-      type: "object",
-      properties: {
-        date: { type: "string" },
-        time: { type: "string" }
-      },
-      required: ["date", "time"]
-    }
-  }]
-}];
-```
-
----
-
-### Passo 5: Criar Pagina de Calendario
-
-**Novo arquivo: `src/pages/Appointments.tsx`**
-
-Interface para visualizar e gerenciar agendamentos:
-
-- Visao de calendario mensal/semanal
-- Lista de agendamentos do dia
-- Detalhes de cada agendamento
-- Status (agendado, confirmado, cancelado, concluido)
-- Filtros por data e status
-
-Componentes:
-- Calendario visual usando `react-day-picker`
-- Lista de agendamentos do dia selecionado
-- Modal de detalhes do agendamento
-- Botoes para confirmar/cancelar/concluir
-
----
-
-### Passo 6: Criar Pagina de Configuracao de Horarios
-
-**Novo arquivo: `src/pages/AppointmentSettings.tsx`** (ou aba em Settings)
-
-Permite configurar:
-- Dias da semana disponiveis
-- Horario de inicio e fim por dia
-- Duracao padrao dos slots
-- Intervalo entre agendamentos
-
----
-
-### Passo 7: Atualizar Navegacao
-
-**Modificar: `src/components/Sidebar.tsx`**
-
-Adicionar novo item de menu:
-```typescript
-{ to: "/appointments", icon: Calendar, label: "Agendamentos" }
-```
-
-**Modificar: `src/App.tsx`**
-
-Adicionar novas rotas:
-```typescript
-<Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
-```
-
----
-
-### Passo 8: Criar Hook para Agendamentos
-
-**Novo arquivo: `src/hooks/useAppointments.ts`**
-
-```typescript
-export function useAppointments() {
-  // Lista agendamentos com filtros
-  // Cria/atualiza/cancela agendamentos
-  // Realtime subscription para atualizacoes
-}
-
-export function useAppointmentSlots() {
-  // Gerencia horarios disponiveis
+function containsFunctionCallCode(text: string): boolean {
+  const codePatterns = [
+    /print\s*\(/i,
+    /default_api\./i,
+    /check_available_slots\s*\(/i,
+    /create_appointment\s*\(/i,
+    /cancel_appointment\s*\(/i,
+    /list_appointments\s*\(/i,
+    /\w+_api\.\w+\s*\(/i,
+    /```[\s\S]*```/,
+  ];
+  return codePatterns.some(pattern => pattern.test(text));
 }
 ```
 
----
+#### 2. Extrair Function Call de Texto
 
-### Passo 9: Atualizar Dashboard com Metricas
+Adicionar funcao para tentar recuperar a chamada de funcao do texto:
 
-**Modificar: `src/pages/Dashboard.tsx`**
+```typescript
+function extractFunctionCallFromText(text: string): { name: string; args: Record<string, string> } | null {
+  const patterns = [
+    /(check_available_slots|create_appointment|cancel_appointment|list_appointments)\s*\(\s*([^)]*)\)/i
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const funcName = match[1];
+      const argsStr = match[2];
+      const args: Record<string, string> = {};
+      
+      const argMatches = argsStr.matchAll(/(\w+)\s*=\s*['"]?([^'",)]+)['"]?/g);
+      for (const argMatch of argMatches) {
+        args[argMatch[1]] = argMatch[2].trim();
+      }
+      
+      return { name: funcName, args };
+    }
+  }
+  return null;
+}
+```
 
-Adicionar cards:
-- Agendamentos hoje
-- Proximos agendamentos
-- Agendamentos da semana
+#### 3. Modificar Loop de Processamento
 
----
+No loop principal (linhas 269-343), apos obter a resposta de texto:
 
-### Resumo dos Arquivos
+```typescript
+// Verificar se o texto contem codigo de function call
+const textPart = content.parts.find((p: any) => p.text);
+if (textPart) {
+  const responseText = textPart.text;
+  
+  // Detectar se a resposta contem codigo
+  if (containsFunctionCallCode(responseText)) {
+    console.log("Detected code in response, attempting to extract function call");
+    
+    const extracted = extractFunctionCallFromText(responseText);
+    
+    if (extracted) {
+      // Executar a funcao extraida
+      console.log("Extracted function:", extracted.name, extracted.args);
+      
+      const functionResult = await executeFunction(supabase, supabaseUrl, extracted.name, {
+        ...extracted.args,
+        userId,
+        phone,
+        contactName,
+      });
+      
+      // Adicionar ao contexto e continuar
+      geminiPayload.contents.push({
+        role: "model",
+        parts: [{ functionCall: { name: extracted.name, args: extracted.args } }]
+      });
+      geminiPayload.contents.push({
+        role: "user",
+        parts: [{
+          functionResponse: {
+            name: extracted.name,
+            response: functionResult,
+          }
+        }]
+      });
+      
+      functionCallsProcessed++;
+      continue; // Continuar loop para obter resposta natural
+    } else {
+      // Nao conseguiu extrair, pedir nova resposta
+      geminiPayload.contents.push({
+        role: "user",
+        parts: [{ 
+          text: "Responda APENAS em linguagem natural para o cliente. NAO use codigo, funcoes print(), ou sintaxe de programacao. Use as ferramentas disponibilizadas pelo sistema." 
+        }]
+      });
+      continue;
+    }
+  }
+  
+  // Resposta normal, usar
+  aiReply = responseText;
+}
+```
 
-| Arquivo | Acao |
-|---------|------|
-| **SQL Migration** | Criar tabelas `appointments` e `appointment_slots` |
-| **manage-appointment/index.ts** | Nova Edge Function |
-| **whatsapp-ai-agent/index.ts** | Adicionar function calling |
-| **Appointments.tsx** | Nova pagina de calendario |
-| **useAppointments.ts** | Novo hook |
-| **Sidebar.tsx** | Adicionar menu |
-| **App.tsx** | Adicionar rota |
-| **Dashboard.tsx** | Adicionar metricas |
+#### 4. Melhorar System Prompt
 
----
+Adicionar instrucoes mais explicitas no prompt do sistema (linha 216-240):
 
-### Fluxo de Agendamento via WhatsApp
+```typescript
+const systemPrompt = `...
 
-```text
-Cliente: "Quero agendar uma consulta para amanha"
-         |
-         v
-IA: [Detecta intencao de agendamento]
-    [Chama check_available_slots({ date: "2026-01-24" })]
-         |
-         v
-IA: "Temos horarios disponiveis amanha:
-     - 09:00
-     - 10:00
-     - 14:00
-     - 15:30
-     Qual horario prefere?"
-         |
-         v
-Cliente: "10 horas"
-         |
-         v
-IA: [Chama create_appointment({ date, time: "10:00", title: "Consulta" })]
-         |
-         v
-IA: "Pronto! Sua consulta foi agendada para amanha, 
-     dia 24/01 as 10:00. Posso ajudar em algo mais?"
+REGRAS CRITICAS - NUNCA VIOLE:
+- NUNCA escreva codigo Python, JavaScript ou qualquer linguagem
+- NUNCA use print(), default_api, ou sintaxe de funcao no texto
+- NUNCA envie comandos tecnicos para o cliente
+- Use APENAS as ferramentas (tools) disponibilizadas pelo sistema
+- Responda SEMPRE em linguagem natural e conversacional
+- Quando precisar verificar disponibilidade ou criar agendamento, use as tools, nao escreva codigo
+
+...`;
 ```
 
 ---
 
-### Consideracoes Tecnicas
+### Fluxo Corrigido
 
-1. **Timezone**: Usar fuso horario do Brasil (America/Sao_Paulo)
-2. **Conflitos**: Verificar disponibilidade antes de criar
-3. **Lembretes**: Futuro - enviar lembrete 24h antes
-4. **Cancelamento**: Cliente pode cancelar via WhatsApp
+```text
+Resposta do Gemini
+        |
+        v
+  Tem functionCall? ----Sim----> Executar funcao
+        |                              |
+       Nao                             v
+        |                    Adicionar resultado
+        v                              |
+  Obter texto                          v
+        |                    Continuar loop
+        v
+  Texto contem codigo? ----Sim----> Extrair funcao
+        |                              |
+       Nao                         Extraiu?
+        |                           /    \
+        v                         Sim    Nao
+  Enviar ao cliente                |      |
+                                   v      v
+                            Executar   Pedir nova
+                            funcao     resposta
+                                   |
+                                   v
+                            Continuar loop
+```
+
+---
+
+### Resultado Esperado
+
+Apos a correcao, o fluxo sera:
+
+```text
+Cliente: "isso" (confirmando reuniao amanha 16h)
+         |
+         v
+IA: [Detecta intencao de criar agendamento]
+    [Usa tool create_appointment]
+         |
+         v
+manage-appointment: [Cria registro no banco]
+         |
+         v
+IA: "Perfeito, Thays! Sua reuniao com o Wemerson 
+     foi agendada para amanha, 27/01, as 16:00. 
+     Posso ajudar com mais alguma coisa?"
+```
+
+---
+
+### Arquivos a Modificar
+
+| Arquivo | Alteracoes |
+|---------|------------|
+| `supabase/functions/whatsapp-ai-agent/index.ts` | Adicionar funcoes de deteccao/extracao, modificar loop de processamento, melhorar system prompt |
+
+---
+
+### Verificacao Adicional
+
+O sistema ja esta configurado corretamente para:
+- Tabela `appointments` existe com RLS
+- Tabela `appointment_slots` tem horarios configurados (seg-sex 08:00-18:00)
+- Edge function `manage-appointment` suporta todas as operacoes necessarias
+- Conexao entre `whatsapp-ai-agent` e `manage-appointment` esta correta
+
+O unico problema e a filtragem/tratamento da resposta do Gemini quando ele gera codigo ao inves de usar function calling.
 
