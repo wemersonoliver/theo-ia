@@ -6,6 +6,41 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Detecta se a resposta contém código de function call ao invés de texto natural
+function containsFunctionCallCode(text: string): boolean {
+  const codePatterns = [
+    /print\s*\(/i,
+    /default_api\./i,
+    /check_available_slots\s*\(/i,
+    /create_appointment\s*\(/i,
+    /cancel_appointment\s*\(/i,
+    /list_appointments\s*\(/i,
+    /\w+_api\.\w+\s*\(/i,
+    /```[\s\S]*```/,
+  ];
+  return codePatterns.some(pattern => pattern.test(text));
+}
+
+// Tenta extrair uma chamada de função do texto com código
+function extractFunctionCallFromText(text: string): { name: string; args: Record<string, string> } | null {
+  const pattern = /(check_available_slots|create_appointment|cancel_appointment|list_appointments)\s*\(\s*([^)]*)\)/i;
+  
+  const match = text.match(pattern);
+  if (match) {
+    const funcName = match[1];
+    const argsStr = match[2];
+    const args: Record<string, string> = {};
+    
+    const argMatches = argsStr.matchAll(/(\w+)\s*=\s*['"]?([^'",)]+)['"]?/g);
+    for (const argMatch of argMatches) {
+      args[argMatch[1]] = argMatch[2].trim();
+    }
+    
+    return { name: funcName, args };
+  }
+  return null;
+}
+
 // Tool definitions for function calling
 const schedulingTools = {
   function_declarations: [
@@ -230,7 +265,15 @@ Hoje é ${todayFormatted} (${todayStr}).
 Ao mencionar datas, converta para o formato YYYY-MM-DD para as funções.
 Exemplos: "amanhã" = dia seguinte, "segunda" = próxima segunda-feira.
 
-Regras importantes:
+REGRAS CRÍTICAS - NUNCA VIOLE:
+- NUNCA escreva código Python, JavaScript ou qualquer linguagem de programação
+- NUNCA use print(), default_api, ou sintaxe de função no texto
+- NUNCA envie comandos técnicos para o cliente
+- Use APENAS as ferramentas (tools) disponibilizadas pelo sistema através de function calling
+- Responda SEMPRE em linguagem natural e conversacional
+- Quando precisar verificar disponibilidade ou criar agendamento, use as tools, NÃO escreva código
+
+Regras adicionais:
 - Responda de forma natural e conversacional
 - Seja objetivo e direto
 - Use emojis com moderação
@@ -337,7 +380,60 @@ Regras importantes:
       // No function call, get text response
       const textPart = content.parts.find((p: any) => p.text);
       if (textPart) {
-        aiReply = textPart.text;
+        const responseText = textPart.text;
+        
+        // Detectar se a resposta contém código de function call
+        if (containsFunctionCallCode(responseText)) {
+          console.log("Detected code in response, attempting to extract function call");
+          
+          const extracted = extractFunctionCallFromText(responseText);
+          
+          if (extracted) {
+            // Executar a função extraída
+            console.log("Extracted function:", extracted.name, extracted.args);
+            
+            const functionResult = await executeFunction(supabase, supabaseUrl, extracted.name, {
+              ...extracted.args,
+              userId,
+              phone,
+              contactName,
+            });
+
+            console.log("Extracted function result:", functionResult);
+
+            // Adicionar ao contexto e continuar
+            geminiPayload.contents.push({
+              role: "model",
+              parts: [{ functionCall: { name: extracted.name, args: extracted.args } }]
+            });
+            geminiPayload.contents.push({
+              role: "user",
+              parts: [{
+                functionResponse: {
+                  name: extracted.name,
+                  response: functionResult,
+                }
+              }]
+            });
+
+            functionCallsProcessed++;
+            continue; // Continuar loop para obter resposta natural
+          } else {
+            // Não conseguiu extrair, pedir nova resposta
+            console.log("Could not extract function, requesting natural language response");
+            geminiPayload.contents.push({
+              role: "user",
+              parts: [{ 
+                text: "Responda APENAS em linguagem natural para o cliente. NÃO use código, funções print(), ou sintaxe de programação. Use as ferramentas disponibilizadas pelo sistema." 
+              }]
+            });
+            functionCallsProcessed++;
+            continue;
+          }
+        }
+        
+        // Resposta normal, usar
+        aiReply = responseText;
       }
       break;
     }
