@@ -273,6 +273,119 @@ serve(async (req) => {
         });
       }
 
+      case "confirm_appointment": {
+        // Find appointment by phone (upcoming, not cancelled)
+        let query = supabase
+          .from("appointments")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("status", "scheduled")
+          .order("appointment_date", { ascending: true })
+          .order("appointment_time", { ascending: true });
+
+        if (phone) {
+          query = query.eq("phone", phone);
+        }
+        if (appointmentId) {
+          query = query.eq("id", appointmentId);
+        }
+
+        const { data: aptToConfirm } = await query.limit(1).maybeSingle();
+
+        if (!aptToConfirm) {
+          return new Response(JSON.stringify({ 
+            success: false,
+            message: "Nenhum agendamento pendente encontrado para confirmar."
+          }), { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        const existingTags: string[] = aptToConfirm.tags || [];
+        const newTags = existingTags.includes("confirmado") ? existingTags : [...existingTags, "confirmado"];
+
+        const { error: confirmError } = await supabase
+          .from("appointments")
+          .update({ 
+            status: "confirmed",
+            confirmed_by_client: true,
+            tags: newTags,
+            updated_at: new Date().toISOString() 
+          })
+          .eq("id", aptToConfirm.id);
+
+        if (confirmError) {
+          return new Response(JSON.stringify({ error: confirmError.message }), { 
+            status: 500, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          message: `Presença confirmada para ${aptToConfirm.title} em ${formatDate(aptToConfirm.appointment_date)} às ${aptToConfirm.appointment_time.slice(0, 5)}.`
+        }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
+      case "update_appointment_tags": {
+        const { tags, action: tagAction } = await req.json().catch(() => ({ tags: [], action: "add" }));
+        
+        if (!appointmentId) {
+          return new Response(JSON.stringify({ error: "Missing appointmentId" }), { 
+            status: 400, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        const { data: aptForTags } = await supabase
+          .from("appointments")
+          .select("tags")
+          .eq("id", appointmentId)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (!aptForTags) {
+          return new Response(JSON.stringify({ success: false, message: "Agendamento não encontrado." }), { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        let updatedTags: string[] = aptForTags.tags || [];
+        const inputTags: string[] = Array.isArray(tags) ? tags : [tags];
+
+        if (tagAction === "remove") {
+          updatedTags = updatedTags.filter((t: string) => !inputTags.includes(t));
+        } else {
+          for (const tag of inputTags) {
+            if (!updatedTags.includes(tag)) {
+              updatedTags.push(tag);
+            }
+          }
+        }
+
+        const { error: tagError } = await supabase
+          .from("appointments")
+          .update({ tags: updatedTags, updated_at: new Date().toISOString() })
+          .eq("id", appointmentId);
+
+        if (tagError) {
+          return new Response(JSON.stringify({ error: tagError.message }), { 
+            status: 500, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          });
+        }
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          tags: updatedTags,
+          message: `Tags atualizadas: ${updatedTags.join(", ")}`
+        }), { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Invalid operation" }), { 
           status: 400, 

@@ -147,13 +147,39 @@ interface AppointmentCardProps {
 
 function AppointmentCard({ appointment, onStatusChange, onDelete, formatTime }: AppointmentCardProps) {
   const status = statusConfig[appointment.status] || statusConfig.scheduled;
+  const tags: string[] = appointment.tags || [];
+
+  const tagColors: Record<string, string> = {
+    confirmado: "bg-green-100 text-green-800 border-green-200",
+    realizado: "bg-blue-100 text-blue-800 border-blue-200",
+    "no-show": "bg-red-100 text-red-800 border-red-200",
+    reagendado: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  };
 
   return (
     <div className="flex items-start justify-between rounded-lg border p-4">
       <div className="space-y-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h4 className="font-semibold">{appointment.title}</h4>
           <Badge variant={status.variant}>{status.label}</Badge>
+          {appointment.confirmed_by_client && (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+              ✓ Confirmado pelo cliente
+            </Badge>
+          )}
+          {appointment.reminder_sent && (
+            <Badge variant="outline" className="text-xs">
+              🔔 Lembrete enviado
+            </Badge>
+          )}
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tagColors[tag] || "bg-gray-100 text-gray-800 border-gray-200"}`}
+            >
+              {tag}
+            </span>
+          ))}
         </div>
 
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">

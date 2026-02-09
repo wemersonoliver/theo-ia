@@ -57,6 +57,7 @@ export type Database = {
         Row: {
           appointment_date: string
           appointment_time: string
+          confirmed_by_client: boolean | null
           contact_name: string | null
           created_at: string | null
           description: string | null
@@ -64,7 +65,10 @@ export type Database = {
           id: string
           notes: string | null
           phone: string
+          reminder_sent: boolean | null
+          reminder_sent_at: string | null
           status: string | null
+          tags: string[] | null
           title: string
           updated_at: string | null
           user_id: string
@@ -72,6 +76,7 @@ export type Database = {
         Insert: {
           appointment_date: string
           appointment_time: string
+          confirmed_by_client?: boolean | null
           contact_name?: string | null
           created_at?: string | null
           description?: string | null
@@ -79,7 +84,10 @@ export type Database = {
           id?: string
           notes?: string | null
           phone: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
           status?: string | null
+          tags?: string[] | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -87,6 +95,7 @@ export type Database = {
         Update: {
           appointment_date?: string
           appointment_time?: string
+          confirmed_by_client?: boolean | null
           contact_name?: string | null
           created_at?: string | null
           description?: string | null
@@ -94,7 +103,10 @@ export type Database = {
           id?: string
           notes?: string | null
           phone?: string
+          reminder_sent?: boolean | null
+          reminder_sent_at?: string | null
           status?: string | null
+          tags?: string[] | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -210,6 +222,9 @@ export type Database = {
           max_messages_without_human: number | null
           out_of_hours_message: string | null
           pre_service_active: boolean | null
+          reminder_enabled: boolean | null
+          reminder_hours_before: number | null
+          reminder_message_template: string | null
           response_delay_seconds: number | null
           trigger_keywords: string[] | null
           updated_at: string | null
@@ -233,6 +248,9 @@ export type Database = {
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          reminder_enabled?: boolean | null
+          reminder_hours_before?: number | null
+          reminder_message_template?: string | null
           response_delay_seconds?: number | null
           trigger_keywords?: string[] | null
           updated_at?: string | null
@@ -256,6 +274,9 @@ export type Database = {
           max_messages_without_human?: number | null
           out_of_hours_message?: string | null
           pre_service_active?: boolean | null
+          reminder_enabled?: boolean | null
+          reminder_hours_before?: number | null
+          reminder_message_template?: string | null
           response_delay_seconds?: number | null
           trigger_keywords?: string[] | null
           updated_at?: string | null
