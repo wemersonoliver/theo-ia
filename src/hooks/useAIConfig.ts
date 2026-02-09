@@ -23,6 +23,9 @@ export interface AIConfig {
   trigger_keywords: string[];
   keyword_activation_enabled: boolean;
   response_delay_seconds: number;
+  reminder_enabled: boolean;
+  reminder_hours_before: number;
+  reminder_message_template: string | null;
   created_at: string;
   updated_at: string;
 }

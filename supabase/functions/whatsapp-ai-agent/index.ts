@@ -15,6 +15,8 @@ function containsFunctionCallCode(text: string): boolean {
     /create_appointment\s*\(/i,
     /cancel_appointment\s*\(/i,
     /list_appointments\s*\(/i,
+    /confirm_appointment\s*\(/i,
+    /update_appointment_tags\s*\(/i,
     /\w+_api\.\w+\s*\(/i,
     /```[\s\S]*```/,
   ];
@@ -23,7 +25,7 @@ function containsFunctionCallCode(text: string): boolean {
 
 // Tenta extrair uma chamada de função do texto com código
 function extractFunctionCallFromText(text: string): { name: string; args: Record<string, string> } | null {
-  const pattern = /(check_available_slots|create_appointment|cancel_appointment|list_appointments)\s*\(\s*([^)]*)\)/i;
+  const pattern = /(check_available_slots|create_appointment|cancel_appointment|list_appointments|confirm_appointment|update_appointment_tags)\s*\(\s*([^)]*)\)/i;
   
   const match = text.match(pattern);
   if (match) {
@@ -114,6 +116,38 @@ const schedulingTools = {
           }
         },
         required: []
+      }
+    },
+    {
+      name: "confirm_appointment",
+      description: "Confirma a presença do cliente em um agendamento. Use quando o cliente disser que confirma, que vai comparecer, responder SIM a um lembrete, etc.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: []
+      }
+    },
+    {
+      name: "update_appointment_tags",
+      description: "Adiciona ou remove tags de um agendamento (ex: realizado, no-show, reagendado).",
+      parameters: {
+        type: "object",
+        properties: {
+          appointmentId: {
+            type: "string",
+            description: "ID do agendamento"
+          },
+          tags: {
+            type: "array",
+            items: { type: "string" },
+            description: "Tags para adicionar ou remover"
+          },
+          action: {
+            type: "string",
+            description: "Ação: 'add' para adicionar ou 'remove' para remover tags"
+          }
+        },
+        required: ["tags"]
       }
     }
   ]
@@ -260,6 +294,8 @@ Você tem acesso a ferramentas para gerenciar agendamentos. Quando o cliente:
 - Quiser marcar/agendar algo: Primeiro verifique disponibilidade, depois use create_appointment
 - Quiser cancelar um agendamento: Use cancel_appointment
 - Quiser ver seus agendamentos: Use list_appointments
+- Confirmar presença (responder "sim", "confirmo", "confirmado", "vou sim", etc.): Use confirm_appointment
+- O sistema envia lembretes automáticos. Quando o cliente responder confirmando, use confirm_appointment imediatamente.
 
 Hoje é ${todayFormatted} (${todayStr}).
 Ao mencionar datas, converta para o formato YYYY-MM-DD para as funções.

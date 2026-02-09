@@ -15,6 +15,10 @@ export interface Appointment {
   duration_minutes: number;
   status: string;
   notes: string | null;
+  reminder_sent: boolean;
+  reminder_sent_at: string | null;
+  confirmed_by_client: boolean;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
