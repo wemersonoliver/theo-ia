@@ -70,7 +70,7 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         {showFull && (
-          <h1 className="text-lg font-bold text-sidebar-primary">WhatsApp AI</h1>
+          <h1 className="text-lg font-bold text-sidebar-primary">Theo IA</h1>
         )}
         {/* Esconder botão collapse em mobile */}
         {!mobile && (
