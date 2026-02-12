@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
-import { Menu } from "lucide-react";
+import { Menu, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -54,6 +54,17 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
           </div>
         </main>
       </div>
+
+      {/* Botão flutuante de suporte WhatsApp */}
+      <a
+        href="https://wa.me/5547984863023"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-lg transition-transform hover:scale-105"
+      >
+        <MessageCircle className="h-5 w-5" />
+        <span className="hidden sm:inline text-sm font-medium">Suporte</span>
+      </a>
     </div>
   );
 }
