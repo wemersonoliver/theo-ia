@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -13,9 +14,10 @@ import {
   ChevronRight,
   Calendar,
   CalendarCog,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -37,6 +39,23 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   const { signOut, user } = useAuth();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "super_admin")
+      .then(({ data }) => {
+        setIsSuperAdmin(!!(data && data.length > 0));
+      });
+  }, [user]);
+
+  const allNavItems = isSuperAdmin
+    ? [...navItems, { to: "/admin", icon: ShieldCheck, label: "Administração" }]
+    : navItems;
 
   // Em mobile, sempre mostrar expandido
   const showFull = mobile || !collapsed;
@@ -68,7 +87,7 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
+        {allNavItems.map((item) => {
           const isActive = location.pathname === item.to;
           return (
             <NavLink
