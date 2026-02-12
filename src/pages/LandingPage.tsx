@@ -105,7 +105,7 @@ export default function LandingPage() {
               24h por Dia
             </span>
           </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-[hsl(215,20%,65%)] md:text-xl">
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-white md:text-xl">
             Automatize seu atendimento no WhatsApp com inteligência artificial.
             Qualifique leads, agende consultas e nunca perca uma venda — pagando apenas{" "}
             <strong className="text-[hsl(142,76%,36%)]">R$ 97/mês</strong>.
@@ -117,7 +117,7 @@ export default function LandingPage() {
                </Link>
              </Button>
            </div>
-          <p className="mt-4 text-sm text-[hsl(215,20%,65%)]">
+          <p className="mt-4 text-sm text-white">
             <Shield className="mr-1 inline h-4 w-4" /> Cancele quando quiser. Sem compromisso.
           </p>
         </div>
@@ -129,7 +129,7 @@ export default function LandingPage() {
            <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
              Por que continuar pagando <span className="text-[hsl(0,84%,60%)]">caro</span> por atendimento?
            </h2>
-           <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(210,40%,85%)]">
+           <p className="mx-auto mb-12 max-w-2xl text-center text-white">
              Um funcionário CLT custa mais de R$ 3.000/mês com encargos. E ainda tira férias, fica doente e trabalha só 8 horas. Compare:
            </p>
           <div className="overflow-hidden rounded-xl border border-[hsl(217,33%,17%)]">
@@ -145,7 +145,7 @@ export default function LandingPage() {
             {cltVsTheo.map((row, i) => (
               <div key={i} className="grid grid-cols-3 border-t border-[hsl(217,33%,17%)]">
                 <div className="p-4 text-sm font-medium">{row.label}</div>
-                <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(210,40%,85%)]">{row.clt}</div>
+                <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-white">{row.clt}</div>
                 <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(142,76%,36%)]">{row.theo}</div>
               </div>
             ))}
@@ -164,7 +164,7 @@ export default function LandingPage() {
           <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
             Tudo que você precisa em <span className="text-[hsl(217,91%,60%)]">um só lugar</span>
           </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(210,40%,85%)]">
+          <p className="mx-auto mb-12 max-w-2xl text-center text-white">
             Funcionalidades completas para automatizar e escalar seu atendimento via WhatsApp.
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -175,7 +175,7 @@ export default function LandingPage() {
                     <f.icon className="h-6 w-6 text-[hsl(217,91%,60%)]" />
                   </div>
                   <h3 className="mb-2 font-bold">{f.title}</h3>
-                  <p className="text-sm text-[hsl(210,40%,85%)]">{f.desc}</p>
+                  <p className="text-sm text-white">{f.desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -195,11 +195,11 @@ export default function LandingPage() {
             </div>
             <CardContent className="p-8 pt-12">
               <div className="mb-6 text-center">
-                <p className="mb-1 text-sm text-[hsl(210,40%,85%)]">Plano completo</p>
+                <p className="mb-1 text-sm text-white">Plano completo</p>
                 <div className="flex items-baseline justify-center gap-1">
-                   <span className="text-sm text-[hsl(210,40%,85%)]">R$</span>
+                   <span className="text-sm text-white">R$</span>
                    <span className="text-6xl font-extrabold">97</span>
-                   <span className="text-[hsl(210,40%,85%)]">/mês</span>
+                   <span className="text-white">/mês</span>
                 </div>
               </div>
               <ul className="mb-8 space-y-3">
@@ -215,7 +215,7 @@ export default function LandingPage() {
                    Começar Agora — 7 Dias Grátis <ArrowRight className="ml-2 h-5 w-5" />
                  </Link>
                </Button>
-              <p className="mt-3 text-center text-xs text-[hsl(210,40%,85%)]">
+              <p className="mt-3 text-center text-xs text-white">
                 Cancele a qualquer momento. Sem multa.
               </p>
             </CardContent>
@@ -228,19 +228,19 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-8 text-center">
           <div>
             <p className="text-3xl font-bold text-[hsl(217,91%,60%)]">24/7</p>
-            <p className="text-sm text-[hsl(210,40%,85%)]">Disponível sempre</p>
+            <p className="text-sm text-white">Disponível sempre</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(142,76%,36%)]">&lt;5s</p>
-            <p className="text-sm text-[hsl(210,40%,85%)]">Tempo de resposta</p>
+            <p className="text-sm text-white">Tempo de resposta</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(38,92%,50%)]">∞</p>
-            <p className="text-sm text-[hsl(210,40%,85%)]">Conversas simultâneas</p>
+            <p className="text-sm text-white">Conversas simultâneas</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(217,91%,60%)]">80%</p>
-            <p className="text-sm text-[hsl(210,40%,85%)]">Menos faltas</p>
+            <p className="text-sm text-white">Menos faltas</p>
           </div>
         </div>
       </section>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <AccordionTrigger className="text-left hover:no-underline">
                   {item.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[hsl(210,40%,85%)]">
+                <AccordionContent className="text-white">
                   {item.a}
                 </AccordionContent>
               </AccordionItem>
@@ -272,7 +272,7 @@ export default function LandingPage() {
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
             Comece hoje e veja resultados em minutos
           </h2>
-          <p className="mx-auto mb-8 max-w-xl text-[hsl(210,40%,85%)]">
+          <p className="mx-auto mb-8 max-w-xl text-white">
             Enquanto você hesita, seus concorrentes já estão automatizando o atendimento.
             Não perca mais clientes por falta de resposta.
           </p>
@@ -286,7 +286,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-[hsl(217,33%,17%)] px-4 py-8">
-        <div className="mx-auto max-w-6xl text-center text-sm text-[hsl(210,40%,85%)]">
+        <div className="mx-auto max-w-6xl text-center text-sm text-white">
           <p>© {new Date().getFullYear()} Theo IA. Todos os direitos reservados.</p>
         </div>
       </footer>
