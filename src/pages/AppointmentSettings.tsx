@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export default function AppointmentSettings() {
   const { slots, isLoading, saveSlot, deleteSlot, toggleSlotActive } = useAppointmentSlots();
   
   const [newSlot, setNewSlot] = useState({
-    day_of_week: 1,
+    days_of_week: [1] as number[],
     start_time: "08:00",
     end_time: "18:00",
     slot_duration_minutes: 30,
@@ -33,25 +34,47 @@ export default function AppointmentSettings() {
 
   const handleAddSlot = () => {
     if (!user) return;
-
-    const existingSlot = slots.find(
-      (s) => s.day_of_week === newSlot.day_of_week && s.start_time === newSlot.start_time + ":00"
-    );
-
-    if (existingSlot) {
-      toast.error("Já existe um horário configurado para este período");
+    if (newSlot.days_of_week.length === 0) {
+      toast.error("Selecione pelo menos um dia da semana");
       return;
     }
 
-    saveSlot.mutate({
-      user_id: user.id,
-      day_of_week: newSlot.day_of_week,
-      start_time: newSlot.start_time + ":00",
-      end_time: newSlot.end_time + ":00",
-      slot_duration_minutes: newSlot.slot_duration_minutes,
-      max_appointments_per_slot: 1,
-      is_active: true,
+    const skipped: string[] = [];
+    const toAdd = newSlot.days_of_week.filter((day) => {
+      const exists = slots.find(
+        (s) => s.day_of_week === day && s.start_time === newSlot.start_time + ":00"
+      );
+      if (exists) {
+        skipped.push(DAYS.find((d) => d.value === day)?.label || "");
+        return false;
+      }
+      return true;
     });
+
+    if (skipped.length > 0) {
+      toast.warning(`Horário já existe para: ${skipped.join(", ")}`);
+    }
+
+    toAdd.forEach((day) => {
+      saveSlot.mutate({
+        user_id: user.id,
+        day_of_week: day,
+        start_time: newSlot.start_time + ":00",
+        end_time: newSlot.end_time + ":00",
+        slot_duration_minutes: newSlot.slot_duration_minutes,
+        max_appointments_per_slot: 1,
+        is_active: true,
+      });
+    });
+  };
+
+  const toggleDay = (day: number) => {
+    setNewSlot((prev) => ({
+      ...prev,
+      days_of_week: prev.days_of_week.includes(day)
+        ? prev.days_of_week.filter((d) => d !== day)
+        : [...prev.days_of_week, day].sort(),
+    }));
   };
 
   const formatTime = (time: string) => time.slice(0, 5);
@@ -93,18 +116,18 @@ export default function AppointmentSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Dia da Semana</Label>
-              <select
-                value={newSlot.day_of_week}
-                onChange={(e) => setNewSlot({ ...newSlot, day_of_week: parseInt(e.target.value) })}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
+              <Label>Dias da Semana</Label>
+              <div className="grid grid-cols-2 gap-2">
                 {DAYS.map((day) => (
-                  <option key={day.value} value={day.value}>
+                  <label key={day.value} className="flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm cursor-pointer hover:bg-accent/50">
+                    <Checkbox
+                      checked={newSlot.days_of_week.includes(day.value)}
+                      onCheckedChange={() => toggleDay(day.value)}
+                    />
                     {day.label}
-                  </option>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
