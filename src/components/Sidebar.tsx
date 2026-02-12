@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import theoLogo from "@/assets/logo_theo_ia.png";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -69,8 +70,13 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
     >
       {/* Header */}
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-        {showFull && (
-          <h1 className="text-lg font-bold text-sidebar-primary">Theo IA</h1>
+        {showFull ? (
+          <div className="flex items-center gap-2">
+            <img src={theoLogo} alt="Theo IA" className="h-8 w-8 rounded-lg" />
+            <span className="text-lg font-bold text-sidebar-primary">Theo IA</span>
+          </div>
+        ) : (
+          <img src={theoLogo} alt="Theo IA" className="h-8 w-8 rounded-lg" />
         )}
         {/* Esconder botão collapse em mobile */}
         {!mobile && (

@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import theoLogo from "@/assets/logo_theo_ia.png";
 import {
   MessageSquare,
   Bot,
@@ -76,9 +77,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-[hsl(217,33%,17%)] bg-[hsl(222,47%,5%)]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(217,91%,60%)]">
-              <Bot className="h-5 w-5 text-white" />
-            </div>
+            <img src={theoLogo} alt="Theo IA" className="h-9 w-9 rounded-lg" />
             <span className="text-lg font-bold">Theo IA</span>
           </div>
           <div className="flex items-center gap-3">
