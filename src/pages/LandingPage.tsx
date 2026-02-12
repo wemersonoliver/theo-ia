@@ -110,28 +110,28 @@ export default function LandingPage() {
             Qualifique leads, agende consultas e nunca perca uma venda — pagando apenas{" "}
             <strong className="text-[hsl(142,76%,36%)]">R$ 97/mês</strong>.
           </p>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button size="lg" asChild className="h-14 px-8 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)]">
-              <Link to="/register">
-                Comece Seu Teste Grátis de 7 Dias <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
+           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+             <Button size="lg" asChild className="h-14 px-6 sm:px-8 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)] w-full sm:w-auto">
+               <Link to="/register">
+                 Comece Seu Teste Grátis de 7 Dias <ArrowRight className="ml-2 h-5 w-5" />
+               </Link>
+             </Button>
+           </div>
           <p className="mt-4 text-sm text-[hsl(215,20%,65%)]">
             <Shield className="mr-1 inline h-4 w-4" /> Cancele quando quiser. Sem compromisso.
           </p>
         </div>
       </section>
 
-      {/* Problema vs Solução */}
-      <section className="px-4 py-20">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
-            Por que continuar pagando <span className="text-[hsl(0,84%,60%)]">caro</span> por atendimento?
-          </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(215,20%,65%)]">
-            Um funcionário CLT custa mais de R$ 3.000/mês com encargos. E ainda tira férias, fica doente e trabalha só 8 horas. Compare:
-          </p>
+       {/* Problema vs Solução */}
+       <section className="px-4 py-20">
+         <div className="mx-auto max-w-5xl">
+           <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
+             Por que continuar pagando <span className="text-[hsl(0,84%,60%)]">caro</span> por atendimento?
+           </h2>
+           <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(210,40%,85%)]">
+             Um funcionário CLT custa mais de R$ 3.000/mês com encargos. E ainda tira férias, fica doente e trabalha só 8 horas. Compare:
+           </p>
           <div className="overflow-hidden rounded-xl border border-[hsl(217,33%,17%)]">
             <div className="grid grid-cols-3 bg-[hsl(222,47%,8%)]">
               <div className="p-4 font-semibold text-[hsl(215,20%,65%)]" />
@@ -145,7 +145,7 @@ export default function LandingPage() {
             {cltVsTheo.map((row, i) => (
               <div key={i} className="grid grid-cols-3 border-t border-[hsl(217,33%,17%)]">
                 <div className="p-4 text-sm font-medium">{row.label}</div>
-                <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(215,20%,65%)]">{row.clt}</div>
+                <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(210,40%,85%)]">{row.clt}</div>
                 <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(142,76%,36%)]">{row.theo}</div>
               </div>
             ))}
@@ -164,7 +164,7 @@ export default function LandingPage() {
           <h2 className="mb-4 text-center text-3xl font-bold md:text-4xl">
             Tudo que você precisa em <span className="text-[hsl(217,91%,60%)]">um só lugar</span>
           </h2>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(215,20%,65%)]">
+          <p className="mx-auto mb-12 max-w-2xl text-center text-[hsl(210,40%,85%)]">
             Funcionalidades completas para automatizar e escalar seu atendimento via WhatsApp.
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -175,7 +175,7 @@ export default function LandingPage() {
                     <f.icon className="h-6 w-6 text-[hsl(217,91%,60%)]" />
                   </div>
                   <h3 className="mb-2 font-bold">{f.title}</h3>
-                  <p className="text-sm text-[hsl(215,20%,65%)]">{f.desc}</p>
+                  <p className="text-sm text-[hsl(210,40%,85%)]">{f.desc}</p>
                 </CardContent>
               </Card>
             ))}
@@ -195,11 +195,11 @@ export default function LandingPage() {
             </div>
             <CardContent className="p-8 pt-12">
               <div className="mb-6 text-center">
-                <p className="mb-1 text-sm text-[hsl(215,20%,65%)]">Plano completo</p>
+                <p className="mb-1 text-sm text-[hsl(210,40%,85%)]">Plano completo</p>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-sm text-[hsl(215,20%,65%)]">R$</span>
-                  <span className="text-6xl font-extrabold">97</span>
-                  <span className="text-[hsl(215,20%,65%)]">/mês</span>
+                   <span className="text-sm text-[hsl(210,40%,85%)]">R$</span>
+                   <span className="text-6xl font-extrabold">97</span>
+                   <span className="text-[hsl(210,40%,85%)]">/mês</span>
                 </div>
               </div>
               <ul className="mb-8 space-y-3">
@@ -210,12 +210,12 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <Button size="lg" asChild className="w-full h-14 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)]">
-                <Link to="/register">
-                  Começar Agora — 7 Dias Grátis <ArrowRight className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-              <p className="mt-3 text-center text-xs text-[hsl(215,20%,65%)]">
+               <Button size="lg" asChild className="w-full h-14 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)]">
+                 <Link to="/register">
+                   Começar Agora — 7 Dias Grátis <ArrowRight className="ml-2 h-5 w-5" />
+                 </Link>
+               </Button>
+              <p className="mt-3 text-center text-xs text-[hsl(210,40%,85%)]">
                 Cancele a qualquer momento. Sem multa.
               </p>
             </CardContent>
@@ -228,19 +228,19 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-8 text-center">
           <div>
             <p className="text-3xl font-bold text-[hsl(217,91%,60%)]">24/7</p>
-            <p className="text-sm text-[hsl(215,20%,65%)]">Disponível sempre</p>
+            <p className="text-sm text-[hsl(210,40%,85%)]">Disponível sempre</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(142,76%,36%)]">&lt;5s</p>
-            <p className="text-sm text-[hsl(215,20%,65%)]">Tempo de resposta</p>
+            <p className="text-sm text-[hsl(210,40%,85%)]">Tempo de resposta</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(38,92%,50%)]">∞</p>
-            <p className="text-sm text-[hsl(215,20%,65%)]">Conversas simultâneas</p>
+            <p className="text-sm text-[hsl(210,40%,85%)]">Conversas simultâneas</p>
           </div>
           <div>
             <p className="text-3xl font-bold text-[hsl(217,91%,60%)]">80%</p>
-            <p className="text-sm text-[hsl(215,20%,65%)]">Menos faltas</p>
+            <p className="text-sm text-[hsl(210,40%,85%)]">Menos faltas</p>
           </div>
         </div>
       </section>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <AccordionTrigger className="text-left hover:no-underline">
                   {item.q}
                 </AccordionTrigger>
-                <AccordionContent className="text-[hsl(215,20%,65%)]">
+                <AccordionContent className="text-[hsl(210,40%,85%)]">
                   {item.a}
                 </AccordionContent>
               </AccordionItem>
@@ -272,21 +272,21 @@ export default function LandingPage() {
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">
             Comece hoje e veja resultados em minutos
           </h2>
-          <p className="mx-auto mb-8 max-w-xl text-[hsl(215,20%,65%)]">
+          <p className="mx-auto mb-8 max-w-xl text-[hsl(210,40%,85%)]">
             Enquanto você hesita, seus concorrentes já estão automatizando o atendimento.
             Não perca mais clientes por falta de resposta.
           </p>
-          <Button size="lg" asChild className="h-14 px-10 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)]">
-            <Link to="/register">
-              Quero Meus 7 Dias Grátis <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
-          </Button>
+           <Button size="lg" asChild className="h-14 px-6 sm:px-10 text-base bg-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,50%)] w-full sm:w-auto">
+             <Link to="/register">
+               Quero Meus 7 Dias Grátis <ArrowRight className="ml-2 h-5 w-5" />
+             </Link>
+           </Button>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-[hsl(217,33%,17%)] px-4 py-8">
-        <div className="mx-auto max-w-6xl text-center text-sm text-[hsl(215,20%,65%)]">
+        <div className="mx-auto max-w-6xl text-center text-sm text-[hsl(210,40%,85%)]">
           <p>© {new Date().getFullYear()} Theo IA. Todos os direitos reservados.</p>
         </div>
       </footer>
