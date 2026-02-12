@@ -134,7 +134,7 @@ export default function LandingPage() {
            </p>
           <div className="overflow-hidden rounded-xl border border-[hsl(217,33%,17%)]">
             <div className="grid grid-cols-3 bg-[hsl(222,47%,8%)]">
-              <div className="p-4 font-semibold text-[hsl(215,20%,65%)]" />
+              <div className="p-4 font-semibold text-white" />
               <div className="flex items-center justify-center gap-2 border-l border-[hsl(217,33%,17%)] p-4 font-bold text-[hsl(0,84%,60%)]">
                 <X className="h-5 w-5" /> CLT
               </div>
@@ -144,7 +144,7 @@ export default function LandingPage() {
             </div>
             {cltVsTheo.map((row, i) => (
               <div key={i} className="grid grid-cols-3 border-t border-[hsl(217,33%,17%)]">
-                <div className="p-4 text-sm font-medium">{row.label}</div>
+                <div className="p-4 text-sm font-medium text-white">{row.label}</div>
                 <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-white">{row.clt}</div>
                 <div className="border-l border-[hsl(217,33%,17%)] p-4 text-sm text-[hsl(142,76%,36%)]">{row.theo}</div>
               </div>
@@ -169,12 +169,12 @@ export default function LandingPage() {
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((f, i) => (
-              <Card key={i} className="border-[hsl(217,33%,17%)] bg-[hsl(222,47%,8%)] transition-all hover:border-[hsl(217,91%,60%)]/50 hover:shadow-lg hover:shadow-[hsl(217,91%,60%)]/5">
+              <Card key={i} className="border-[hsl(217,33%,17%)] bg-[hsl(222,47%,8%)] text-white transition-all hover:border-[hsl(217,91%,60%)]/50 hover:shadow-lg hover:shadow-[hsl(217,91%,60%)]/5">
                 <CardContent className="p-6">
                   <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-[hsl(217,91%,60%)]/10">
                     <f.icon className="h-6 w-6 text-[hsl(217,91%,60%)]" />
                   </div>
-                  <h3 className="mb-2 font-bold">{f.title}</h3>
+                  <h3 className="mb-2 font-bold text-white">{f.title}</h3>
                   <p className="text-sm text-white">{f.desc}</p>
                 </CardContent>
               </Card>
@@ -189,7 +189,7 @@ export default function LandingPage() {
           <h2 className="mb-12 text-center text-3xl font-bold md:text-4xl">
             Investimento que se paga no <span className="text-[hsl(142,76%,36%)]">primeiro dia</span>
           </h2>
-          <Card className="relative overflow-hidden border-2 border-[hsl(217,91%,60%)] bg-[hsl(222,47%,8%)]">
+          <Card className="relative overflow-hidden border-2 border-[hsl(217,91%,60%)] bg-[hsl(222,47%,8%)] text-white">
             <div className="absolute right-0 top-0 rounded-bl-xl bg-[hsl(142,76%,36%)] px-4 py-1.5 text-sm font-bold text-white">
               7 DIAS GRÁTIS
             </div>
@@ -198,13 +198,13 @@ export default function LandingPage() {
                 <p className="mb-1 text-sm text-white">Plano completo</p>
                 <div className="flex items-baseline justify-center gap-1">
                    <span className="text-sm text-white">R$</span>
-                   <span className="text-6xl font-extrabold">97</span>
+                   <span className="text-6xl font-extrabold text-white">97</span>
                    <span className="text-white">/mês</span>
                 </div>
               </div>
               <ul className="mb-8 space-y-3">
                 {included.map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm">
+                  <li key={i} className="flex items-center gap-3 text-sm text-white">
                     <Check className="h-5 w-5 shrink-0 text-[hsl(142,76%,36%)]" />
                     {item}
                   </li>
@@ -253,9 +253,9 @@ export default function LandingPage() {
           </h2>
           <Accordion type="single" collapsible className="space-y-3">
             {faqItems.map((item, i) => (
-              <AccordionItem key={i} value={`faq-${i}`} className="rounded-lg border border-[hsl(217,33%,17%)] bg-[hsl(222,47%,8%)] px-4">
-                <AccordionTrigger className="text-left hover:no-underline">
-                  {item.q}
+               <AccordionItem key={i} value={`faq-${i}`} className="rounded-lg border border-[hsl(217,33%,17%)] bg-[hsl(222,47%,8%)] px-4 text-white">
+                 <AccordionTrigger className="text-left text-white hover:no-underline">
+                   {item.q}
                 </AccordionTrigger>
                 <AccordionContent className="text-white">
                   {item.a}
