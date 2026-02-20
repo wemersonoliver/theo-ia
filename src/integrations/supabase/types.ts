@@ -149,6 +149,42 @@ export type Database = {
         }
         Relationships: []
       }
+      entrevistas_config: {
+        Row: {
+          company_name: string
+          created_at: string
+          generated_prompt: string | null
+          id: string
+          messages: Json
+          segment: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name: string
+          created_at?: string
+          generated_prompt?: string | null
+          id?: string
+          messages?: Json
+          segment: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string
+          created_at?: string
+          generated_prompt?: string | null
+          id?: string
+          messages?: Json
+          segment?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_base_documents: {
         Row: {
           content_text: string | null
