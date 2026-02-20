@@ -142,7 +142,8 @@ function ContactForm({ form, setForm, onSave, onCancel, isPending, phoneEditable
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Contacts() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoOpenedRef = useRef<string | null>(null);
   const { contacts, isLoading, updateContact, deleteContact, createContact, syncFromConversations } =
     useContacts();
 
@@ -162,9 +163,12 @@ export default function Contacts() {
   // Auto-open contact via ?open=PHONE (coming from Conversations page)
   useEffect(() => {
     const openPhone = searchParams.get("open");
-    if (openPhone && contacts.length > 0) {
+    if (openPhone && contacts.length > 0 && autoOpenedRef.current !== openPhone) {
+      autoOpenedRef.current = openPhone;
       const contact = contacts.find((c) => c.phone === openPhone);
       if (contact) openEdit(contact);
+      // Remove o parâmetro da URL para não reabrir ao salvar
+      setSearchParams({}, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, contacts]);
