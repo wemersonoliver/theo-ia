@@ -10,6 +10,7 @@ export interface Contact {
   name: string | null;
   email: string | null;
   notes: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
@@ -69,6 +70,7 @@ export function useContacts() {
           email: contact.email,
           notes: contact.notes,
           phone: contact.phone,
+          tags: contact.tags,
         })
         .eq("id", contact.id)
         .eq("user_id", user!.id);
@@ -98,13 +100,14 @@ export function useContacts() {
   });
 
   const createContact = useMutation({
-    mutationFn: async (data: { phone: string; name?: string; email?: string; notes?: string }) => {
+    mutationFn: async (data: { phone: string; name?: string; email?: string; notes?: string; tags?: string[] }) => {
       const { error } = await supabase.from("contacts").insert({
         user_id: user!.id,
         phone: data.phone,
         name: data.name || null,
         email: data.email || null,
         notes: data.notes || null,
+        tags: data.tags || [],
       });
       if (error) throw error;
     },
