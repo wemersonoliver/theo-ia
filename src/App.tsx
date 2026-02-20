@@ -13,6 +13,7 @@ import WhatsApp from "./pages/WhatsApp";
 import AIAgent from "./pages/AIAgent";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import Conversations from "./pages/Conversations";
+import Contacts from "./pages/Contacts";
 import Appointments from "./pages/Appointments";
 import AppointmentSettings from "./pages/AppointmentSettings";
 import Settings from "./pages/Settings";
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/ai-agent" element={<ProtectedRoute><AIAgent /></ProtectedRoute>} />
               <Route path="/knowledge-base" element={<ProtectedRoute><KnowledgeBase /></ProtectedRoute>} />
               <Route path="/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
+              <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
               <Route path="/appointments" element={<ProtectedRoute><Appointments /></ProtectedRoute>} />
               <Route path="/appointment-settings" element={<ProtectedRoute><AppointmentSettings /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

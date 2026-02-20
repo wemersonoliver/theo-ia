@@ -113,6 +113,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          notes: string | null
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          notes?: string | null
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       knowledge_base_documents: {
         Row: {
           content_text: string | null
