@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import { Bot, Clock, MessageSquare, Loader2, Key, X, Plus, Timer, Bell } from "lucide-react";
+import { Bot, Clock, Loader2, Key, X, Plus, Timer, Bell } from "lucide-react";
 
 const DAYS = [
   { value: 0, label: "Dom" },
@@ -34,11 +34,6 @@ export default function AIAgent() {
     out_of_hours_message: "Olá! Estou fora do horário de atendimento. Retornarei em breve!",
     handoff_message: "Um momento, vou transferir você para um atendente.",
     max_messages_without_human: 10,
-    pre_service_active: false,
-    initial_message_1: "",
-    initial_message_2: "",
-    initial_message_3: "",
-    delay_between_messages: 3,
     trigger_keywords: [] as string[],
     keyword_activation_enabled: false,
     response_delay_seconds: 5,
@@ -60,11 +55,6 @@ export default function AIAgent() {
         out_of_hours_message: config.out_of_hours_message || "",
         handoff_message: config.handoff_message || "",
         max_messages_without_human: config.max_messages_without_human || 10,
-        pre_service_active: config.pre_service_active || false,
-        initial_message_1: config.initial_message_1 || "",
-        initial_message_2: config.initial_message_2 || "",
-        initial_message_3: config.initial_message_3 || "",
-        delay_between_messages: config.delay_between_messages || 3,
         trigger_keywords: config.trigger_keywords || [],
         keyword_activation_enabled: config.keyword_activation_enabled || false,
         response_delay_seconds: config.response_delay_seconds ?? 5,
@@ -145,9 +135,7 @@ export default function AIAgent() {
           <TabsTrigger value="general" className="min-w-fit">Geral</TabsTrigger>
           <TabsTrigger value="hours" className="min-w-fit">Horário</TabsTrigger>
           <TabsTrigger value="triggers" className="min-w-fit">Gatilhos</TabsTrigger>
-          <TabsTrigger value="preservice" className="min-w-fit">Pré-Atendimento</TabsTrigger>
           <TabsTrigger value="reminders" className="min-w-fit">Lembretes</TabsTrigger>
-          <TabsTrigger value="preservice" className="min-w-fit">Pré-Atendimento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -373,79 +361,6 @@ export default function AIAgent() {
                   Ative o switch acima para configurar as palavras-chave. Quando desativado, a IA responde a todas as mensagens normalmente.
                 </p>
               )}
-            </CardContent>
-          </Card>
-
-          <Button onClick={handleSave} disabled={saveConfig.isPending}>
-            {saveConfig.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Salvar Configurações
-          </Button>
-        </TabsContent>
-
-        <TabsContent value="preservice" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Pré-Atendimento Automático
-                  </CardTitle>
-                  <CardDescription>
-                    Sequência de mensagens enviadas ao primeiro contato
-                  </CardDescription>
-                </div>
-                <Switch
-                  checked={formData.pre_service_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, pre_service_active: checked })}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="msg1">Mensagem 1</Label>
-                <Textarea
-                  id="msg1"
-                  value={formData.initial_message_1}
-                  onChange={(e) => setFormData({ ...formData, initial_message_1: e.target.value })}
-                  placeholder="Primeira mensagem de boas-vindas..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="msg2">Mensagem 2</Label>
-                <Textarea
-                  id="msg2"
-                  value={formData.initial_message_2}
-                  onChange={(e) => setFormData({ ...formData, initial_message_2: e.target.value })}
-                  placeholder="Segunda mensagem..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="msg3">Mensagem 3</Label>
-                <Textarea
-                  id="msg3"
-                  value={formData.initial_message_3}
-                  onChange={(e) => setFormData({ ...formData, initial_message_3: e.target.value })}
-                  placeholder="Terceira mensagem..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="delay">Delay entre mensagens (segundos)</Label>
-                <Input
-                  id="delay"
-                  type="number"
-                  value={formData.delay_between_messages}
-                  onChange={(e) => setFormData({ ...formData, delay_between_messages: parseInt(e.target.value) || 3 })}
-                  min={1}
-                  max={30}
-                />
-              </div>
             </CardContent>
           </Card>
 
