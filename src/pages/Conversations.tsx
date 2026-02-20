@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,10 +80,19 @@ function ChatMessages({ messages, className }: { messages: Message[]; className?
 
 export default function Conversations() {
   const { conversations, isLoading, sendMessage, toggleAI } = useConversations();
+  const [searchParams] = useSearchParams();
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const { messages } = useConversation(selectedPhone || "");
   const isMobile = useIsMobile();
+
+  // Seleciona automaticamente o contato se vier da página de Contatos
+  useEffect(() => {
+    const phone = searchParams.get("phone");
+    if (phone && conversations.length > 0) {
+      setSelectedPhone(phone);
+    }
+  }, [searchParams, conversations]);
 
   const handleSendMessage = async () => {
     if (!selectedPhone || !messageInput.trim()) return;
