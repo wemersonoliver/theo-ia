@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,13 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useConversations, useConversation, Message } from "@/hooks/useConversations";
-import { MessageSquare, Send, Loader2, User, Bot, ArrowLeft, Power, PowerOff, Mic, ImageIcon, FileText } from "lucide-react";
+import { useContacts } from "@/hooks/useContacts";
+import { TagInput, tagClass } from "@/components/TagInput";
+import {
+  MessageSquare, Send, Loader2, User, Bot, Power, PowerOff,
+  Mic, ImageIcon, FileText, Tag, ExternalLink,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+// ── Chat messages ─────────────────────────────────────────────────────────────
 function ChatMessages({ messages, className }: { messages: Message[]; className?: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +85,70 @@ function ChatMessages({ messages, className }: { messages: Message[]; className?
   );
 }
 
+// ── Tag Popover ───────────────────────────────────────────────────────────────
+function TagPopover({ phone }: { phone: string }) {
+  const { contacts, updateContact } = useContacts();
+  const [open, setOpen] = useState(false);
+
+  const contact = contacts.find((c) => c.phone === phone);
+  const tags = contact?.tags ?? [];
+
+  function handleChange(newTags: string[]) {
+    if (!contact) return;
+    updateContact.mutate({ id: contact.id, tags: newTags });
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
+          <Tag className="h-4 w-4" />
+          <span className="hidden sm:inline">Tags</span>
+          {tags.length > 0 && (
+            <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+              {tags.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-4" align="end">
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium">Tags do contato</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {contact ? "Edite as tags deste contato" : "Contato ainda não cadastrado"}
+            </p>
+          </div>
+          {contact ? (
+            <>
+              <TagInput tags={tags} onChange={handleChange} />
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${tagClass(tag)}`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Sincronize os contatos para poder adicionar tags.
+            </p>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Conversations() {
+  const navigate = useNavigate();
   const { conversations, isLoading, sendMessage, toggleAI } = useConversations();
   const [searchParams] = useSearchParams();
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
@@ -96,7 +166,6 @@ export default function Conversations() {
 
   const handleSendMessage = async () => {
     if (!selectedPhone || !messageInput.trim()) return;
-    
     await sendMessage.mutateAsync({ phone: selectedPhone, content: messageInput });
     setMessageInput("");
   };
@@ -110,6 +179,10 @@ export default function Conversations() {
 
   const selectedConversation = conversations.find((c) => c.phone === selectedPhone);
 
+  function openContactPage(phone: string) {
+    navigate(`/contacts?open=${encodeURIComponent(phone)}`);
+  }
+
   if (isLoading) {
     return (
       <DashboardLayout title="Conversas" description="Gerencie suas conversas">
@@ -120,7 +193,7 @@ export default function Conversations() {
     );
   }
 
-  // Mobile: Lista de cards + Dialog popup
+  // ── Mobile ────────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <DashboardLayout title="Conversas">
@@ -176,31 +249,39 @@ export default function Conversations() {
         {/* Mobile Chat Dialog */}
         <Dialog open={!!selectedPhone} onOpenChange={(open) => !open && setSelectedPhone(null)}>
           <DialogContent className="flex h-[85vh] max-h-[85vh] w-[95vw] max-w-[95vw] flex-col p-0 gap-0 rounded-xl">
-            <DialogHeader className="flex-row items-center gap-3 border-b px-4 py-3 space-y-0">
+            <DialogHeader className="flex-row items-center gap-2 border-b px-4 py-3 space-y-0">
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-base truncate">
-                  {selectedConversation?.contact_name || selectedPhone}
-                </DialogTitle>
+                <button
+                  className="flex items-center gap-1 group text-left"
+                  onClick={() => selectedPhone && openContactPage(selectedPhone)}
+                >
+                  <DialogTitle className="text-base truncate group-hover:text-primary transition-colors">
+                    {selectedConversation?.contact_name || selectedPhone}
+                  </DialogTitle>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </button>
                 <p className="text-xs text-muted-foreground truncate">{selectedPhone}</p>
               </div>
-              <Button
-                variant={selectedConversation?.ai_active ? "outline" : "default"}
-                size="sm"
-                onClick={() => selectedPhone && toggleAI.mutate({ 
-                  phone: selectedPhone, 
-                  active: !selectedConversation?.ai_active 
-                })}
-                disabled={toggleAI.isPending}
-                className="shrink-0"
-              >
-                {toggleAI.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : selectedConversation?.ai_active ? (
-                  <PowerOff className="h-4 w-4" />
-                ) : (
-                  <Power className="h-4 w-4" />
-                )}
-              </Button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {selectedPhone && <TagPopover phone={selectedPhone} />}
+                <Button
+                  variant={selectedConversation?.ai_active ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => selectedPhone && toggleAI.mutate({
+                    phone: selectedPhone,
+                    active: !selectedConversation?.ai_active,
+                  })}
+                  disabled={toggleAI.isPending}
+                >
+                  {toggleAI.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : selectedConversation?.ai_active ? (
+                    <PowerOff className="h-4 w-4" />
+                  ) : (
+                    <Power className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </DialogHeader>
 
             <ChatMessages messages={messages} className="flex-1 min-h-0" />
@@ -237,10 +318,10 @@ export default function Conversations() {
     );
   }
 
-  // Desktop: Layout com lista e chat lado a lado
+  // ── Desktop ───────────────────────────────────────────────────────────────
   return (
-    <DashboardLayout 
-      title="Conversas" 
+    <DashboardLayout
+      title="Conversas"
       description="Visualize e responda mensagens do WhatsApp"
     >
       <div className="grid gap-4 h-[calc(100vh-180px)] lg:grid-cols-3">
@@ -301,43 +382,48 @@ export default function Conversations() {
           </CardContent>
         </Card>
 
-        {/* Chat View - Desktop */}
+        {/* Chat View */}
         <Card className="lg:col-span-2">
           {selectedPhone ? (
             <>
               <CardHeader className="border-b py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">
-                      {selectedConversation?.contact_name || selectedPhone}
-                    </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    {/* Clickable contact name */}
+                    <button
+                      className="flex items-center gap-1.5 group text-left"
+                      onClick={() => openContactPage(selectedPhone)}
+                    >
+                      <CardTitle className="text-base group-hover:text-primary transition-colors">
+                        {selectedConversation?.contact_name || selectedPhone}
+                      </CardTitle>
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
                     <p className="text-sm text-muted-foreground">{selectedPhone}</p>
                   </div>
-                  
-                  <Button
-                    variant={selectedConversation?.ai_active ? "outline" : "default"}
-                    size="sm"
-                    onClick={() => toggleAI.mutate({ 
-                      phone: selectedPhone, 
-                      active: !selectedConversation?.ai_active 
-                    })}
-                    disabled={toggleAI.isPending}
-                    className="gap-2"
-                  >
-                    {toggleAI.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : selectedConversation?.ai_active ? (
-                      <>
-                        <PowerOff className="h-4 w-4" />
-                        Desativar IA
-                      </>
-                    ) : (
-                      <>
-                        <Power className="h-4 w-4" />
-                        Reativar IA
-                      </>
-                    )}
-                  </Button>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <TagPopover phone={selectedPhone} />
+                    <Button
+                      variant={selectedConversation?.ai_active ? "outline" : "default"}
+                      size="sm"
+                      onClick={() => toggleAI.mutate({
+                        phone: selectedPhone,
+                        active: !selectedConversation?.ai_active,
+                      })}
+                      disabled={toggleAI.isPending}
+                      className="gap-2"
+                    >
+                      {toggleAI.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : selectedConversation?.ai_active ? (
+                        <><PowerOff className="h-4 w-4" /> Desativar IA</>
+                      ) : (
+                        <><Power className="h-4 w-4" /> Reativar IA</>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="flex h-[calc(100vh-340px)] flex-col p-0">
@@ -364,8 +450,8 @@ export default function Conversations() {
                     </Button>
                   </div>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {selectedConversation?.ai_active 
-                      ? "IA ativa - respondendo automaticamente" 
+                    {selectedConversation?.ai_active
+                      ? "IA ativa - respondendo automaticamente"
                       : "IA desativada - ao enviar mensagem, você assume o atendimento"}
                   </p>
                 </div>
