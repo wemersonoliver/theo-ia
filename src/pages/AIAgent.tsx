@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,27 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import { Bot, Clock, Loader2, Key, X, Plus, Timer, Bell } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  Bot,
+  Clock,
+  Loader2,
+  Key,
+  X,
+  Plus,
+  Timer,
+  Bell,
+  Sparkles,
+  Send,
+  Copy,
+  Check,
+  RefreshCw,
+  ChevronRight,
+} from "lucide-react";
 
 const DAYS = [
   { value: 0, label: "Dom" },
@@ -22,9 +41,452 @@ const DAYS = [
   { value: 6, label: "Sáb" },
 ];
 
+const LOADING_MESSAGES = [
+  "Analisando gargalos do setor...",
+  "Mapeando dúvidas frequentes...",
+  "Consultando base de conhecimento do nicho...",
+  "Elaborando próxima pergunta...",
+  "Identificando padrões do segmento...",
+  "Processando contexto da empresa...",
+];
+
+type InterviewMessage = { role: "user" | "assistant"; content: string };
+type InterviewState = "idle" | "chat" | "completed";
+
+function InterviewTab({
+  onPromptApplied,
+}: {
+  onPromptApplied: () => void;
+}) {
+  const { user } = useAuth();
+  const { saveConfig } = useAIConfig();
+
+  const [interviewState, setInterviewState] = useState<InterviewState>("idle");
+  const [companyName, setCompanyName] = useState("");
+  const [segment, setSegment] = useState("");
+  const [messages, setMessages] = useState<InterviewMessage[]>([]);
+  const [interviewId, setInterviewId] = useState<string | null>(null);
+  const [userInput, setUserInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState("");
+  const [generatedPrompt, setGeneratedPrompt] = useState("");
+  const [editablePrompt, setEditablePrompt] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  useEffect(() => {
+    return () => {
+      if (loadingIntervalRef.current) clearInterval(loadingIntervalRef.current);
+    };
+  }, []);
+
+  const startLoadingAnimation = () => {
+    let idx = Math.floor(Math.random() * LOADING_MESSAGES.length);
+    setLoadingText(LOADING_MESSAGES[idx]);
+    loadingIntervalRef.current = setInterval(() => {
+      idx = (idx + 1) % LOADING_MESSAGES.length;
+      setLoadingText(LOADING_MESSAGES[idx]);
+    }, 2000);
+  };
+
+  const stopLoadingAnimation = () => {
+    if (loadingIntervalRef.current) {
+      clearInterval(loadingIntervalRef.current);
+      loadingIntervalRef.current = null;
+    }
+  };
+
+  const callInterviewAgent = async (
+    currentMessages: InterviewMessage[],
+    userMessage?: string
+  ) => {
+    if (!user) return;
+    setIsLoading(true);
+    startLoadingAnimation();
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Não autenticado");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/interview-ai-agent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          interviewId,
+          companyName,
+          segment,
+          messages: currentMessages,
+          userMessage,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro na requisição");
+
+      const assistantMsg: InterviewMessage = {
+        role: "assistant",
+        content: data.message,
+      };
+
+      const newMessages = [...currentMessages];
+      if (userMessage && currentMessages.length > 0) {
+        newMessages.push({ role: "user", content: userMessage });
+      }
+      newMessages.push(assistantMsg);
+      setMessages(newMessages);
+
+      if (data.finished) {
+        setGeneratedPrompt(data.generatedPrompt || "");
+        setEditablePrompt(data.generatedPrompt || "");
+        setInterviewState("completed");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao chamar o agente");
+    } finally {
+      setIsLoading(false);
+      stopLoadingAnimation();
+    }
+  };
+
+  const handleStart = async () => {
+    if (!companyName.trim() || !segment.trim()) {
+      toast.error("Preencha o nome da empresa e o segmento.");
+      return;
+    }
+    if (!user) return;
+
+    setIsLoading(true);
+    startLoadingAnimation();
+
+    try {
+      const { data: interview, error } = await supabase
+        .from("entrevistas_config")
+        .insert({
+          user_id: user.id,
+          company_name: companyName.trim(),
+          segment: segment.trim(),
+          messages: [],
+          status: "in_progress",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setInterviewId(interview.id);
+      setInterviewState("chat");
+      setMessages([]);
+      setIsLoading(false);
+      stopLoadingAnimation();
+
+      // Primeira chamada — sem mensagem do usuário
+      await callInterviewAgent([]);
+    } catch (err) {
+      toast.error("Erro ao iniciar entrevista");
+      setIsLoading(false);
+      stopLoadingAnimation();
+    }
+  };
+
+  const handleSend = async () => {
+    const text = userInput.trim();
+    if (!text || isLoading) return;
+    setUserInput("");
+    await callInterviewAgent(messages, text);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(editablePrompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleApply = async () => {
+    if (!editablePrompt.trim()) return;
+    setIsApplying(true);
+    try {
+      // Salva prompt no banco da entrevista
+      if (interviewId) {
+        await supabase
+          .from("entrevistas_config")
+          .update({ generated_prompt: editablePrompt, status: "completed" })
+          .eq("id", interviewId);
+      }
+
+      // Salva nas instruções do agente IA
+      await saveConfig.mutateAsync({ custom_prompt: editablePrompt });
+      toast.success("Prompt aplicado às Instruções Personalizadas!");
+      onPromptApplied();
+    } catch {
+      toast.error("Erro ao aplicar o prompt");
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleRestart = () => {
+    setInterviewState("idle");
+    setMessages([]);
+    setInterviewId(null);
+    setGeneratedPrompt("");
+    setEditablePrompt("");
+    setCompanyName("");
+    setSegment("");
+    setUserInput("");
+  };
+
+  // ─── TELA INICIAL ────────────────────────────────────────────────────────────
+  if (interviewState === "idle") {
+    return (
+      <div className="space-y-6">
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-background">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Entrevista Consultiva com IA
+            </CardTitle>
+            <CardDescription>
+              Nossa IA conduzirá uma consultoria personalizada para gerar automaticamente
+              o melhor prompt de atendimento para o seu negócio.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="company_name">Nome da Empresa</Label>
+                <Input
+                  id="company_name"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Ex: Clínica Bem Estar"
+                  onKeyDown={(e) => e.key === "Enter" && handleStart()}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="segment">Segmento / Nicho</Label>
+                <Input
+                  id="segment"
+                  value={segment}
+                  onChange={(e) => setSegment(e.target.value)}
+                  placeholder="Ex: Clínica de estética, E-commerce, Advocacia..."
+                  onKeyDown={(e) => e.key === "Enter" && handleStart()}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+              <p className="text-sm font-medium">Como funciona:</p>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li className="flex items-start gap-2">
+                  <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  A IA analisa o seu segmento e identifica os gargalos do setor
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  Faz perguntas adaptadas para entender seu negócio (5-8 perguntas)
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  Gera um prompt completo com Persona, Protocolos e Call to Action
+                </li>
+                <li className="flex items-start gap-2">
+                  <ChevronRight className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  Aplica diretamente nas Instruções do seu Agente IA com 1 clique
+                </li>
+              </ul>
+            </div>
+
+            <Button
+              onClick={handleStart}
+              disabled={isLoading || !companyName.trim() || !segment.trim()}
+              className="w-full"
+              size="lg"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {loadingText}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Iniciar Entrevista com IA
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── TELA DE RESULTADO ────────────────────────────────────────────────────────
+  if (interviewState === "completed") {
+    return (
+      <div className="space-y-4">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-primary">
+              <Check className="h-5 w-5" />
+              Prompt Mestre Gerado!
+            </CardTitle>
+            <CardDescription>
+              Revise, edite se necessário, e aplique às instruções do seu agente com um clique.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Textarea
+              value={editablePrompt}
+              onChange={(e) => setEditablePrompt(e.target.value)}
+              rows={16}
+              className="font-mono text-sm resize-y"
+              placeholder="Prompt gerado..."
+            />
+
+            <div className="flex flex-wrap gap-3">
+              <Button onClick={handleApply} disabled={isApplying} size="lg" className="flex-1">
+                {isApplying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Aplicando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Aplicar às Instruções
+                  </>
+                )}
+              </Button>
+              <Button variant="outline" onClick={handleCopy}>
+                {copied ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4 text-primary" />
+                    Copiado!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copiar
+                  </>
+                )}
+              </Button>
+              <Button variant="ghost" onClick={handleRestart}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Nova Entrevista
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ─── CHAT ATIVO ───────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Entrevista em andamento
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                {companyName} · {segment}
+              </CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleRestart}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="h-[420px] px-4">
+            <div className="space-y-4 py-4">
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted text-foreground rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%]">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                      <span className="animate-pulse">{loadingText}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          <div className="border-t p-4">
+            <div className="flex gap-2">
+              <Input
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua resposta..."
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!userInput.trim() || isLoading}
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Enter para enviar · Shift+Enter para nova linha
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
+
 export default function AIAgent() {
   const { config, isLoading, saveConfig, toggleActive } = useAIConfig();
-  
+  const [activeTab, setActiveTab] = useState("general");
+
   const [formData, setFormData] = useState({
     agent_name: "Assistente Virtual",
     custom_prompt: "",
@@ -39,7 +501,8 @@ export default function AIAgent() {
     response_delay_seconds: 5,
     reminder_enabled: false,
     reminder_hours_before: 2,
-    reminder_message_template: "Olá {nome}! Lembrando que você tem um agendamento {dia_referencia} às {hora}. Por favor, confirme sua presença respondendo SIM ou informe se precisa reagendar.",
+    reminder_message_template:
+      "Olá {nome}! Lembrando que você tem um agendamento {dia_referencia} às {hora}. Por favor, confirme sua presença respondendo SIM ou informe se precisa reagendar.",
   });
 
   const [newKeyword, setNewKeyword] = useState("");
@@ -60,7 +523,9 @@ export default function AIAgent() {
         response_delay_seconds: config.response_delay_seconds ?? 5,
         reminder_enabled: config.reminder_enabled || false,
         reminder_hours_before: config.reminder_hours_before || 2,
-        reminder_message_template: config.reminder_message_template || "Olá {nome}! Lembrando que você tem um agendamento {dia_referencia} às {hora}. Por favor, confirme sua presença respondendo SIM ou informe se precisa reagendar.",
+        reminder_message_template:
+          config.reminder_message_template ||
+          "Olá {nome}! Lembrando que você tem um agendamento {dia_referencia} às {hora}. Por favor, confirme sua presença respondendo SIM ou informe se precisa reagendar.",
       });
     }
   }, [config]);
@@ -96,6 +561,11 @@ export default function AIAgent() {
     }));
   };
 
+  // Quando o prompt é aplicado, redireciona para aba Geral
+  const handlePromptApplied = () => {
+    setActiveTab("general");
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout title="Agente IA" description="Configure seu agente de atendimento">
@@ -107,8 +577,8 @@ export default function AIAgent() {
   }
 
   return (
-    <DashboardLayout 
-      title="Agente IA" 
+    <DashboardLayout
+      title="Agente IA"
       description="Configure como seu agente de IA responde às mensagens"
     >
       {/* Toggle Principal */}
@@ -130,21 +600,24 @@ export default function AIAgent() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
           <TabsTrigger value="general" className="min-w-fit">Geral</TabsTrigger>
           <TabsTrigger value="hours" className="min-w-fit">Horário</TabsTrigger>
           <TabsTrigger value="triggers" className="min-w-fit">Gatilhos</TabsTrigger>
           <TabsTrigger value="reminders" className="min-w-fit">Lembretes</TabsTrigger>
+          <TabsTrigger value="interview" className="min-w-fit gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            Entrevista IA
+          </TabsTrigger>
         </TabsList>
 
+        {/* ── ABA GERAL ── */}
         <TabsContent value="general" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Configurações do Agente</CardTitle>
-              <CardDescription>
-                Personalize o comportamento do seu agente IA
-              </CardDescription>
+              <CardDescription>Personalize o comportamento do seu agente IA</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -164,10 +637,11 @@ export default function AIAgent() {
                   value={formData.custom_prompt}
                   onChange={(e) => setFormData({ ...formData, custom_prompt: e.target.value })}
                   placeholder="Descreva como o agente deve se comportar, tom de voz, informações importantes sobre sua empresa..."
-                  rows={6}
+                  rows={8}
                 />
                 <p className="text-sm text-muted-foreground">
                   O agente usará essas instruções junto com a base de conhecimento para responder.
+                  Use a aba <strong>Entrevista IA</strong> para gerar automaticamente.
                 </p>
               </div>
 
@@ -177,7 +651,9 @@ export default function AIAgent() {
                   id="max_messages"
                   type="number"
                   value={formData.max_messages_without_human}
-                  onChange={(e) => setFormData({ ...formData, max_messages_without_human: parseInt(e.target.value) || 10 })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, max_messages_without_human: parseInt(e.target.value) || 10 })
+                  }
                   min={1}
                   max={50}
                 />
@@ -195,13 +671,14 @@ export default function AIAgent() {
                   id="response_delay"
                   type="number"
                   value={formData.response_delay_seconds}
-                  onChange={(e) => setFormData({ ...formData, response_delay_seconds: parseInt(e.target.value) || 5 })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, response_delay_seconds: parseInt(e.target.value) || 5 })
+                  }
                   min={0}
                   max={60}
                 />
                 <p className="text-sm text-muted-foreground">
-                  💡 A IA aguardará esse tempo após a última mensagem do cliente antes de responder. 
-                  Isso permite que o cliente envie múltiplas mensagens seguidas sem ser "atropelado" pela IA.
+                  💡 A IA aguardará esse tempo após a última mensagem do cliente antes de responder.
                   Use 0 para resposta imediata.
                 </p>
               </div>
@@ -225,6 +702,7 @@ export default function AIAgent() {
           </Button>
         </TabsContent>
 
+        {/* ── ABA HORÁRIO ── */}
         <TabsContent value="hours" className="space-y-6">
           <Card>
             <CardHeader>
@@ -232,9 +710,7 @@ export default function AIAgent() {
                 <Clock className="h-5 w-5" />
                 Horário de Funcionamento
               </CardTitle>
-              <CardDescription>
-                Define quando o agente responde automaticamente
-              </CardDescription>
+              <CardDescription>Define quando o agente responde automaticamente</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -295,6 +771,7 @@ export default function AIAgent() {
           </Button>
         </TabsContent>
 
+        {/* ── ABA GATILHOS ── */}
         <TabsContent value="triggers" className="space-y-6">
           <Card>
             <CardHeader>
@@ -310,7 +787,9 @@ export default function AIAgent() {
                 </div>
                 <Switch
                   checked={formData.keyword_activation_enabled}
-                  onCheckedChange={(checked) => setFormData({ ...formData, keyword_activation_enabled: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, keyword_activation_enabled: checked })
+                  }
                 />
               </div>
             </CardHeader>
@@ -355,7 +834,7 @@ export default function AIAgent() {
                   </p>
                 </>
               )}
-              
+
               {!formData.keyword_activation_enabled && (
                 <p className="text-sm text-muted-foreground">
                   Ative o switch acima para configurar as palavras-chave. Quando desativado, a IA responde a todas as mensagens normalmente.
@@ -370,6 +849,7 @@ export default function AIAgent() {
           </Button>
         </TabsContent>
 
+        {/* ── ABA LEMBRETES ── */}
         <TabsContent value="reminders" className="space-y-6">
           <Card>
             <CardHeader>
@@ -385,7 +865,9 @@ export default function AIAgent() {
                 </div>
                 <Switch
                   checked={formData.reminder_enabled}
-                  onCheckedChange={(checked) => setFormData({ ...formData, reminder_enabled: checked })}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, reminder_enabled: checked })
+                  }
                 />
               </div>
             </CardHeader>
@@ -398,7 +880,9 @@ export default function AIAgent() {
                       id="reminder_hours"
                       type="number"
                       value={formData.reminder_hours_before}
-                      onChange={(e) => setFormData({ ...formData, reminder_hours_before: parseInt(e.target.value) || 2 })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, reminder_hours_before: parseInt(e.target.value) || 2 })
+                      }
                       min={1}
                       max={24}
                     />
@@ -412,23 +896,27 @@ export default function AIAgent() {
                     <Textarea
                       id="reminder_template"
                       value={formData.reminder_message_template}
-                      onChange={(e) => setFormData({ ...formData, reminder_message_template: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, reminder_message_template: e.target.value })
+                      }
                       placeholder="Mensagem do lembrete..."
                       rows={4}
                     />
                     <p className="text-sm text-muted-foreground">
-                      Variáveis disponíveis: {"{nome}"}, {"{hora}"}, {"{dia_referencia}"} (hoje/amanhã), {"{titulo}"}, {"{data}"}
+                      Variáveis disponíveis: {"{nome}"}, {"{hora}"}, {"{dia_referencia}"} (hoje/amanhã), {"{titulo}"},{" "}
+                      {"{data}"}
                     </p>
                   </div>
 
                   <div className="rounded-lg border p-4 bg-muted/30 space-y-2">
                     <h4 className="font-medium text-sm">⏰ Lógica Inteligente de Envio</h4>
                     <p className="text-sm text-muted-foreground">
-                      Se o horário calculado do lembrete cair fora do horário comercial (ex: agendamento às 08:00 com lembrete 2h antes = 06:00), 
-                      o sistema enviará o lembrete automaticamente <strong>no dia anterior</strong>, 2 horas antes do fim do expediente.
+                      Se o horário calculado do lembrete cair fora do horário comercial, o sistema enviará o
+                      lembrete automaticamente <strong>no dia anterior</strong>, 2 horas antes do fim do expediente.
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Quando o cliente confirmar respondendo "SIM" ou similar, a IA marcará automaticamente o agendamento como <strong>confirmado</strong>.
+                      Quando o cliente confirmar respondendo "SIM" ou similar, a IA marcará automaticamente o
+                      agendamento como <strong>confirmado</strong>.
                     </p>
                   </div>
                 </>
@@ -446,6 +934,11 @@ export default function AIAgent() {
             {saveConfig.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Salvar Configurações
           </Button>
+        </TabsContent>
+
+        {/* ── ABA ENTREVISTA IA ── */}
+        <TabsContent value="interview">
+          <InterviewTab onPromptApplied={handlePromptApplied} />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
