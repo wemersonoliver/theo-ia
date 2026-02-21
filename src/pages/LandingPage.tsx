@@ -98,6 +98,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden px-4 py-20 md:py-32">
         <div className="absolute inset-0 bg-gradient-to-b from-[hsl(217,91%,60%)]/10 to-transparent" />
         <div className="relative mx-auto max-w-4xl text-center">
+          <img src={theoLogo} alt="Theo IA" className="mx-auto mb-8 h-40 w-40 rounded-full drop-shadow-[0_0_25px_hsl(217,91%,60%,0.3)]" />
           <Badge className="mb-6 border-[hsl(217,91%,60%)]/30 bg-[hsl(217,91%,60%)]/10 text-[hsl(217,91%,60%)] hover:bg-[hsl(217,91%,60%)]/20">
             <Zap className="mr-1 h-3 w-3" /> 7 dias grátis — sem cartão de crédito
           </Badge>
