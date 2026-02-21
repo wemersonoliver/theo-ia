@@ -35,6 +35,7 @@ const features = [
   { icon: Bell, title: "Lembretes Automáticos", desc: "Envie lembretes de compromissos e reduza faltas em até 80%." },
   { icon: CheckCircle2, title: "Confirmação por IA", desc: "Confirme agendamentos automaticamente com seus clientes." },
   { icon: Bot, title: "Múltiplas Conversas", desc: "Atenda dezenas de clientes simultaneamente sem perder qualidade." },
+  { icon: Star, title: "Entrevista Inteligente", desc: "Um consultor de IA cria o prompt perfeito para seu negócio — vendas, pré-atendimento ou suporte." },
   { icon: BarChart3, title: "Dashboard Completo", desc: "Acompanhe métricas, relatórios e o desempenho do seu atendimento." },
 ];
 
@@ -55,6 +56,7 @@ const faqItems = [
   { q: "A IA substitui completamente o atendimento humano?", a: "A IA cuida do primeiro atendimento, qualificação e agendamentos. Quando necessário, transfere a conversa para um humano de forma transparente." },
   { q: "Quantos números de WhatsApp posso conectar?", a: "Você pode conectar seu número principal de WhatsApp e gerenciar todas as conversas pelo painel." },
   { q: "Como a IA aprende sobre meu negócio?", a: "Você alimenta a base de conhecimento com documentos, textos e informações sobre seus serviços. A IA usa isso para responder com precisão." },
+  { q: "O que é a Entrevista Inteligente?", a: "É um consultor de IA que faz perguntas sobre seu negócio e cria automaticamente o prompt perfeito de atendimento — adaptado para vendas, pré-atendimento, agendamentos ou suporte." },
 ];
 
 const included = [
@@ -66,6 +68,7 @@ const included = [
   "Confirmação de agendamentos",
   "Múltiplas conversas simultâneas",
   "Dashboard com métricas",
+  "Entrevista IA para criar seu prompt ideal",
   "Suporte por WhatsApp",
   "Atualizações gratuitas",
 ];
