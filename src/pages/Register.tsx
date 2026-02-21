@@ -25,6 +25,9 @@ export default function Register() {
     if (error) {
       toast.error("Erro ao criar conta: " + error.message);
     } else {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'StartTrial');
+      }
       toast.success("Conta criada com sucesso!");
       navigate("/dashboard");
     }
