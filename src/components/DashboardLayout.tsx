@@ -60,7 +60,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
         href="https://wa.me/5547984863023"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-lg transition-transform hover:scale-105"
+        className="fixed bottom-20 right-6 z-50 flex items-center gap-2 rounded-full bg-[#25D366] px-4 py-3 text-white shadow-lg transition-transform hover:scale-105"
       >
         <MessageCircle className="h-5 w-5" />
         <span className="hidden sm:inline text-sm font-medium">Suporte</span>
