@@ -316,7 +316,8 @@ Regras adicionais:
 - Se não souber a resposta, diga que vai verificar com a equipe
 - Nunca invente informações
 - Responda sempre em português brasileiro
-- Ao agendar, sempre confirme data, horário e serviço antes de finalizar`;
+- Ao agendar, sempre confirme data, horário e serviço antes de finalizar
+- FORMATAÇÃO HUMANIZADA: Separe sua resposta em parágrafos curtos (2-3 frases cada). Use quebras de linha duplas entre os parágrafos. Evite respostas em um único bloco longo. Cada parágrafo deve abordar um ponto diferente. Isso é fundamental para parecer natural no WhatsApp.`;
 
     // Build conversation messages
     const conversationMessages = recentMessages.map((msg: any) => ({
@@ -485,10 +486,12 @@ Regras adicionais:
     // Split response into parts for more human-like delivery
     const parts = splitMessage(aiReply);
 
-    // Send each part with delay
+    // Send each part with typing simulation delay
     for (let i = 0; i < parts.length; i++) {
       if (i > 0) {
-        await delay(1500 + Math.random() * 1000);
+        // Delay proporcional ao tamanho da mensagem anterior (simula digitação ~40 chars/sec)
+        const typingDelay = Math.min(Math.max(parts[i].length * 25, 1000), 4000);
+        await delay(typingDelay + Math.random() * 800);
       }
       await sendWhatsAppMessage(supabase, userId, phone, parts[i]);
     }
@@ -552,11 +555,53 @@ async function executeFunction(supabase: any, supabaseUrl: string, name: string,
 }
 
 function splitMessage(text: string): string[] {
-  if (text.length < 200) return [text];
+  // Mensagens curtas não precisam ser divididas
+  if (text.length < 150) return [text];
+
+  // 1. Tenta dividir por parágrafos (dupla quebra de linha)
+  let parts = text.split(/\n\n+/).filter(p => p.trim());
   
-  const parts = text.split(/\n\n+/).filter(p => p.trim());
-  if (parts.length > 1) return parts.slice(0, 3);
-  
+  if (parts.length > 1) {
+    // Agrupa partes muito pequenas com a próxima para não enviar mensagens de 1 linha
+    const merged: string[] = [];
+    let buffer = "";
+    
+    for (const part of parts) {
+      if (buffer && (buffer.length + part.length) < 250) {
+        buffer += "\n\n" + part;
+      } else {
+        if (buffer) merged.push(buffer);
+        buffer = part;
+      }
+    }
+    if (buffer) merged.push(buffer);
+    
+    // Limita a no máximo 5 mensagens
+    return merged.slice(0, 5);
+  }
+
+  // 2. Se não tem parágrafos, tenta dividir por sentenças em mensagens longas
+  if (text.length > 300) {
+    const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+    
+    if (sentences.length > 1) {
+      const chunks: string[] = [];
+      let current = "";
+      
+      for (const sentence of sentences) {
+        if (current && (current.length + sentence.length) > 280) {
+          chunks.push(current.trim());
+          current = sentence;
+        } else {
+          current += (current ? " " : "") + sentence;
+        }
+      }
+      if (current) chunks.push(current.trim());
+      
+      return chunks.slice(0, 5);
+    }
+  }
+
   return [text];
 }
 
