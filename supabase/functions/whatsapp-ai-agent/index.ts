@@ -311,6 +311,9 @@ REGRAS CRÍTICAS - NUNCA VIOLE:
 - Use APENAS as ferramentas (tools) disponibilizadas pelo sistema através de function calling
 - Responda SEMPRE em linguagem natural e conversacional
 - Quando precisar verificar disponibilidade ou criar agendamento, use as tools, NÃO escreva código
+- OBRIGATÓRIO: Para criar um agendamento, você DEVE chamar a ferramenta create_appointment. NUNCA diga que o agendamento foi criado ou confirmado sem antes ter chamado create_appointment e recebido uma resposta de sucesso.
+- OBRIGATÓRIO: NUNCA simule ou finja ter criado um agendamento. O agendamento SÓ existe quando a ferramenta create_appointment retorna success: true.
+- Se o cliente confirmou todos os dados (data, horário, serviço, nome), chame create_appointment IMEDIATAMENTE. Não peça mais confirmações desnecessárias.
 
 Regras adicionais:
 - Responda de forma natural e conversacional
@@ -347,6 +350,7 @@ Regras adicionais:
 
     let aiReply = "";
     let functionCallsProcessed = 0;
+    let createAppointmentCalled = false;
     const maxFunctionCalls = 3;
 
     while (functionCallsProcessed < maxFunctionCalls) {
@@ -389,7 +393,11 @@ Regras adicionais:
       
       if (functionCall) {
         const fc = functionCall.functionCall;
-        console.log("Function call:", fc.name, fc.args);
+        console.log("Function call:", fc.name, JSON.stringify(fc.args));
+        
+        if (fc.name === "create_appointment") {
+          createAppointmentCalled = true;
+        }
         
         // Execute the function
         const functionResult = await executeFunction(supabase, supabaseUrl, fc.name, {
@@ -399,7 +407,7 @@ Regras adicionais:
           contactName,
         });
 
-        console.log("Function result:", functionResult);
+        console.log("Function result:", JSON.stringify(functionResult));
 
         // Add function call and result to context
         geminiPayload.contents.push(content);
@@ -486,6 +494,31 @@ Regras adicionais:
       });
     }
 
+    // Safeguard: detect if AI claims appointment was created without calling the tool
+    const claimsAppointmentCreated = /agendamento\s*(confirmado|criado|marcado|realizado|feito)/i.test(aiReply) 
+      || /confirmad[oa].*agendamento/i.test(aiReply)
+      || /marcad[oa]\s+para/i.test(aiReply);
+    
+    if (claimsAppointmentCreated && !createAppointmentCalled) {
+      console.warn("[SAFEGUARD] AI claims appointment was created but create_appointment was never called. Forcing function call.");
+      
+      // Try to extract date/time from the AI reply or conversation
+      const dateMatch = aiReply.match(/(\d{4}-\d{2}-\d{2})/);
+      const timeMatch = aiReply.match(/(\d{1,2}:\d{2})/);
+      
+      if (dateMatch && timeMatch) {
+        const forceResult = await executeFunction(supabase, supabaseUrl, "create_appointment", {
+          userId,
+          phone,
+          contactName,
+          date: dateMatch[1],
+          time: timeMatch[1],
+          title: "Agendamento",
+        });
+        console.log("[SAFEGUARD] Force create result:", JSON.stringify(forceResult));
+      }
+    }
+
     // Split response into parts for more human-like delivery
     const parts = splitMessage(aiReply);
 
@@ -530,29 +563,37 @@ Regras adicionais:
 });
 
 async function executeFunction(supabase: any, supabaseUrl: string, name: string, args: any): Promise<any> {
+  const operation = name === "check_available_slots" ? "check_availability" : name;
+  console.log(`[executeFunction] Calling manage-appointment: operation=${operation}, args=`, JSON.stringify(args));
+  
   try {
+    const payload = {
+      operation,
+      userId: args.userId,
+      phone: args.phone,
+      contactName: args.contactName,
+      date: args.date,
+      time: args.time,
+      title: args.title,
+      description: args.description,
+    };
+    
+    console.log(`[executeFunction] Payload:`, JSON.stringify(payload));
+    
     const response = await fetch(`${supabaseUrl}/functions/v1/manage-appointment`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
       },
-      body: JSON.stringify({
-        operation: name === "check_available_slots" ? "check_availability" : name,
-        userId: args.userId,
-        phone: args.phone,
-        contactName: args.contactName,
-        date: args.date,
-        time: args.time,
-        title: args.title,
-        description: args.description,
-      }),
+      body: JSON.stringify(payload),
     });
 
     const result = await response.json();
+    console.log(`[executeFunction] Result (status=${response.status}):`, JSON.stringify(result));
     return result;
   } catch (error) {
-    console.error("Function execution error:", error);
+    console.error("[executeFunction] Error:", error);
     return { error: "Erro ao executar função", message: error instanceof Error ? error.message : "Unknown error" };
   }
 }
