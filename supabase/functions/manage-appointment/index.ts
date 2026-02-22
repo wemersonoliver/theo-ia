@@ -55,7 +55,7 @@ serve(async (req) => {
           });
         }
 
-        // Get existing appointments for this date
+        // Get existing appointments for this date, grouped by time
         const { data: existingAppointments } = await supabase
           .from("appointments")
           .select("appointment_time, duration_minutes")
@@ -63,7 +63,11 @@ serve(async (req) => {
           .eq("appointment_date", date)
           .neq("status", "cancelled");
 
-        const bookedTimes = new Set(existingAppointments?.map(a => a.appointment_time) || []);
+        // Count appointments per time slot
+        const appointmentCountByTime: Record<string, number> = {};
+        for (const a of (existingAppointments || [])) {
+          appointmentCountByTime[a.appointment_time] = (appointmentCountByTime[a.appointment_time] || 0) + 1;
+        }
 
         // Generate available time slots
         const availableSlots: string[] = [];
@@ -72,6 +76,7 @@ serve(async (req) => {
           const [startHour, startMin] = slot.start_time.split(":").map(Number);
           const [endHour, endMin] = slot.end_time.split(":").map(Number);
           const slotDuration = slot.slot_duration_minutes || 30;
+          const maxPerSlot = slot.max_appointments_per_slot || 1;
 
           let currentMinutes = startHour * 60 + startMin;
           const endMinutes = endHour * 60 + endMin;
@@ -80,9 +85,12 @@ serve(async (req) => {
             const hour = Math.floor(currentMinutes / 60);
             const minute = currentMinutes % 60;
             const timeStr = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}:00`;
+            const currentCount = appointmentCountByTime[timeStr] || 0;
 
-            if (!bookedTimes.has(timeStr)) {
-              availableSlots.push(`${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`);
+            if (currentCount < maxPerSlot) {
+              const remaining = maxPerSlot - currentCount;
+              const display = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+              availableSlots.push(maxPerSlot > 1 ? `${display} (${remaining} vaga${remaining > 1 ? "s" : ""})` : display);
             }
 
             currentMinutes += slotDuration;
@@ -108,24 +116,43 @@ serve(async (req) => {
           });
         }
 
-        // Check if slot is available
+        // Check slot capacity
         const timeWithSeconds = time.includes(":") && time.split(":").length === 2 
           ? `${time}:00` 
           : time;
 
-        const { data: existingAppointment } = await supabase
+        const targetDate = new Date(date);
+        const dayOfWeek = targetDate.getDay();
+
+        // Get slot config for this day/time to know max capacity
+        const { data: slotConfig } = await supabase
+          .from("appointment_slots")
+          .select("max_appointments_per_slot")
+          .eq("user_id", userId)
+          .eq("day_of_week", dayOfWeek)
+          .eq("is_active", true)
+          .limit(1)
+          .maybeSingle();
+
+        const maxPerSlot = slotConfig?.max_appointments_per_slot || 1;
+
+        // Count existing appointments at this time
+        const { data: existingAtTime, error: countError } = await supabase
           .from("appointments")
           .select("id")
           .eq("user_id", userId)
           .eq("appointment_date", date)
           .eq("appointment_time", timeWithSeconds)
-          .neq("status", "cancelled")
-          .maybeSingle();
+          .neq("status", "cancelled");
 
-        if (existingAppointment) {
+        const currentCount = existingAtTime?.length || 0;
+
+        if (currentCount >= maxPerSlot) {
           return new Response(JSON.stringify({ 
             success: false,
-            message: "Este horário já está ocupado. Por favor, escolha outro horário."
+            message: maxPerSlot > 1 
+              ? `Todas as ${maxPerSlot} vagas para este horário já estão ocupadas. Por favor, escolha outro horário.`
+              : "Este horário já está ocupado. Por favor, escolha outro horário."
           }), { 
             headers: { ...corsHeaders, "Content-Type": "application/json" } 
           });

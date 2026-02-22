@@ -30,6 +30,7 @@ export default function AppointmentSettings() {
     start_time: "08:00",
     end_time: "18:00",
     slot_duration_minutes: 30,
+    max_appointments_per_slot: 1,
   });
 
   const handleAddSlot = () => {
@@ -62,7 +63,7 @@ export default function AppointmentSettings() {
         start_time: newSlot.start_time + ":00",
         end_time: newSlot.end_time + ":00",
         slot_duration_minutes: newSlot.slot_duration_minutes,
-        max_appointments_per_slot: 1,
+        max_appointments_per_slot: newSlot.max_appointments_per_slot,
         is_active: true,
       });
     });
@@ -161,6 +162,20 @@ export default function AppointmentSettings() {
               />
             </div>
 
+            <div className="space-y-2">
+              <Label>Vagas por Horário</Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={newSlot.max_appointments_per_slot}
+                onChange={(e) => setNewSlot({ ...newSlot, max_appointments_per_slot: parseInt(e.target.value) || 1 })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Defina quantas pessoas podem agendar no mesmo horário. Ex: 1 para consultórios, 10+ para academias/aulas em grupo.
+              </p>
+            </div>
+
             <Button onClick={handleAddSlot} className="w-full" disabled={saveSlot.isPending}>
               {saveSlot.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -214,7 +229,7 @@ export default function AppointmentSettings() {
                                 {formatTime(slot.start_time)} - {formatTime(slot.end_time)}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                Atendimentos de {slot.slot_duration_minutes} min
+                                {slot.slot_duration_minutes} min · {slot.max_appointments_per_slot === 1 ? "1 vaga" : `${slot.max_appointments_per_slot} vagas`} por horário
                               </p>
                             </div>
                           </div>
