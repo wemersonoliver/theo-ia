@@ -29,6 +29,7 @@ import {
   Check,
   RefreshCw,
   ChevronRight,
+  FlaskConical,
 } from "lucide-react";
 
 const DAYS = [
@@ -481,6 +482,165 @@ function InterviewTab({
   );
 }
 
+// ─── ABA TESTAR PROMPT ────────────────────────────────────────────────────────
+
+type TestMessage = { role: "user" | "assistant"; content: string };
+
+function PromptTestTab() {
+  const { user } = useAuth();
+  const [messages, setMessages] = useState<TestMessage[]>([]);
+  const [userInput, setUserInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading]);
+
+  const handleSend = async () => {
+    const text = userInput.trim();
+    if (!text || isLoading || !user) return;
+    setUserInput("");
+
+    const newMessages: TestMessage[] = [...messages, { role: "user", content: text }];
+    setMessages(newMessages);
+    setIsLoading(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Não autenticado");
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/test-ai-prompt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          messages,
+          userMessage: text,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro na requisição");
+
+      setMessages([...newMessages, { role: "assistant", content: data.message }]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao testar prompt");
+      setMessages(messages);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleRestart = () => {
+    setMessages([]);
+    setUserInput("");
+    toast.success("Conversa reiniciada!");
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FlaskConical className="h-4 w-4 text-primary" />
+                Testar Prompt
+              </CardTitle>
+              <CardDescription className="text-xs mt-1">
+                Simule uma conversa como cliente para testar se a IA responde corretamente
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRestart} className="gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reiniciar
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="h-[450px] px-4">
+            <div className="space-y-4 py-4">
+              {messages.length === 0 && !isLoading && (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground">
+                  <FlaskConical className="h-10 w-10 mb-3 opacity-30" />
+                  <p className="text-sm font-medium">Simulador de Atendimento</p>
+                  <p className="text-xs mt-1 max-w-xs">
+                    Envie uma mensagem como se fosse um cliente para testar o prompt atual do seu agente.
+                  </p>
+                </div>
+              )}
+
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-sm"
+                        : "bg-muted text-foreground rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%]">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                      <span className="animate-pulse">Gerando resposta...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          <div className="border-t p-4">
+            <div className="flex gap-2">
+              <Input
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Escreva como um cliente faria..."
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSend}
+                disabled={!userInput.trim() || isLoading}
+                size="icon"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              💡 Teste perguntas comuns dos clientes · O agente usa o prompt e a base de conhecimento atuais
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function AIAgent() {
@@ -609,6 +769,10 @@ export default function AIAgent() {
           <TabsTrigger value="interview" className="min-w-fit gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             Entrevista IA
+          </TabsTrigger>
+          <TabsTrigger value="test" className="min-w-fit gap-1.5">
+            <FlaskConical className="h-3.5 w-3.5" />
+            Testar Prompt
           </TabsTrigger>
         </TabsList>
 
@@ -939,6 +1103,11 @@ export default function AIAgent() {
         {/* ── ABA ENTREVISTA IA ── */}
         <TabsContent value="interview">
           <InterviewTab onPromptApplied={handlePromptApplied} />
+        </TabsContent>
+
+        {/* ── ABA TESTAR PROMPT ── */}
+        <TabsContent value="test">
+          <PromptTestTab />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
