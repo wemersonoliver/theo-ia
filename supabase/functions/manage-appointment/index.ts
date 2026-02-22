@@ -185,6 +185,9 @@ serve(async (req) => {
           });
         }
 
+        // Notify registered contacts about new appointment
+        await notifyAppointment(supabase, userId, contactName, phone, date, time, title);
+
         return new Response(JSON.stringify({ 
           success: true,
           appointment,
@@ -437,4 +440,44 @@ function formatDate(dateStr: string): string {
     day: "2-digit", 
     month: "long" 
   });
+}
+
+async function notifyAppointment(supabase: any, userId: string, contactName: string | null, clientPhone: string, date: string, time: string, title: string) {
+  try {
+    const { data: notifContacts } = await supabase
+      .from("notification_contacts")
+      .select("phone")
+      .eq("user_id", userId)
+      .eq("notify_appointments", true);
+
+    if (!notifContacts || notifContacts.length === 0) return;
+
+    const displayName = contactName || "Desconhecido";
+    const message = `📅 *Novo Agendamento*\n\n👤 *Cliente:* ${displayName}\n📱 *Telefone:* ${clientPhone}\n📋 *Serviço:* ${title}\n🗓️ *Data:* ${formatDate(date)}\n⏰ *Horário:* ${time}`;
+
+    const evolutionUrl = Deno.env.get("EVOLUTION_API_URL")?.replace(/\/$/, "");
+    const evolutionKey = Deno.env.get("EVOLUTION_API_KEY");
+
+    if (!evolutionUrl || !evolutionKey) return;
+
+    const { data: instance } = await supabase
+      .from("whatsapp_instances")
+      .select("instance_name")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!instance) return;
+
+    for (const contact of notifContacts) {
+      await fetch(`${evolutionUrl}/message/sendText/${instance.instance_name}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: evolutionKey },
+        body: JSON.stringify({ number: contact.phone, text: message }),
+      });
+    }
+
+    console.log(`Appointment notification sent to ${notifContacts.length} contacts`);
+  } catch (error) {
+    console.error("Error sending appointment notifications:", error);
+  }
 }

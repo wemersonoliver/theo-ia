@@ -218,6 +218,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          notify_appointments: boolean
+          notify_handoffs: boolean
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          notify_appointments?: boolean
+          notify_handoffs?: boolean
+          phone: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          notify_appointments?: boolean
+          notify_handoffs?: boolean
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           created_at: string | null
