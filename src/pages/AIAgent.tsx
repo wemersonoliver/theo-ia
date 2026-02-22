@@ -521,7 +521,7 @@ const ChatPanel = ({
   emptyDesc: string;
   accentClass: string;
 }) => (
-  <Card className="flex flex-col h-full">
+  <Card className="flex flex-col" style={{ maxHeight: "600px" }}>
     <CardHeader className="pb-3 shrink-0">
       <div className="flex items-center justify-between">
         <div>
@@ -537,8 +537,8 @@ const ChatPanel = ({
         </Button>
       </div>
     </CardHeader>
-    <CardContent className="p-0 flex flex-col flex-1 min-h-0">
-      <ScrollArea className="flex-1 px-4" style={{ height: "400px" }}>
+    <CardContent className="p-0 flex flex-col flex-1 min-h-0 overflow-hidden">
+      <ScrollArea className="flex-1 px-4">
         <div className="space-y-4 py-4">
           {msgs.length === 0 && !loading && (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
