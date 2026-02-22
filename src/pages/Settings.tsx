@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
-import { Key, User, Loader2, Sun, Moon, Monitor } from "lucide-react";
+import { Key, User, Loader2, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
@@ -145,7 +145,7 @@ export default function Settings() {
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <Label>Tema</Label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant={theme === "light" ? "default" : "outline"}
                     className="flex flex-col gap-2 h-auto py-4"
@@ -162,17 +162,9 @@ export default function Settings() {
                     <Moon className="h-5 w-5" />
                     <span className="text-xs">Escuro</span>
                   </Button>
-                  <Button
-                    variant={theme === "system" ? "default" : "outline"}
-                    className="flex flex-col gap-2 h-auto py-4"
-                    onClick={() => setTheme("system")}
-                  >
-                    <Monitor className="h-5 w-5" />
-                    <span className="text-xs">Sistema</span>
-                  </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Escolha entre tema claro, escuro ou automático baseado no sistema.
+                  Escolha entre tema claro ou escuro.
                 </p>
               </div>
             </CardContent>
