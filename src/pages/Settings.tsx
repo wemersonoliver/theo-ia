@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
-import { Key, User, Loader2, Sun, Moon } from "lucide-react";
+import { Key, User, Loader2, Sun, Moon, Bell } from "lucide-react";
+import { NotificationsTab } from "@/components/settings/NotificationsTab";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
@@ -87,6 +88,7 @@ export default function Settings() {
       <Tabs defaultValue="profile" className="space-y-6">
         <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
           <TabsTrigger value="profile" className="min-w-fit">Perfil</TabsTrigger>
+          <TabsTrigger value="notifications" className="min-w-fit">Notificações</TabsTrigger>
           <TabsTrigger value="appearance" className="min-w-fit">Aparência</TabsTrigger>
           <TabsTrigger value="security" className="min-w-fit">Segurança</TabsTrigger>
         </TabsList>
@@ -129,6 +131,10 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationsTab />
         </TabsContent>
 
         <TabsContent value="appearance">

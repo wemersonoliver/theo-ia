@@ -252,6 +252,9 @@ serve(async (req) => {
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id,phone" });
 
+      // Notify registered contacts about handoff
+      await notifyHandoff(supabase, userId, phone, contactName);
+
       return new Response(JSON.stringify({ skipped: true, reason: "Message limit reached" }), { 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
       });
@@ -681,5 +684,28 @@ async function saveAIMessage(supabase: any, userId: string, phone: string, conte
         updated_at: new Date().toISOString(),
       })
       .eq("id", conversation.id);
+  }
+}
+
+async function notifyHandoff(supabase: any, userId: string, clientPhone: string, clientName: string | null) {
+  try {
+    const { data: notifContacts } = await supabase
+      .from("notification_contacts")
+      .select("phone, name")
+      .eq("user_id", userId)
+      .eq("notify_handoffs", true);
+
+    if (!notifContacts || notifContacts.length === 0) return;
+
+    const displayName = clientName || "Desconhecido";
+    const message = `🔔 *Transferência de Atendimento*\n\nUm cliente precisa de atendimento humano.\n\n👤 *Nome:* ${displayName}\n📱 *Telefone:* ${clientPhone}\n⏰ *Horário:* ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
+    for (const contact of notifContacts) {
+      await sendWhatsAppMessage(supabase, userId, contact.phone, message);
+    }
+
+    console.log(`Handoff notification sent to ${notifContacts.length} contacts`);
+  } catch (error) {
+    console.error("Error sending handoff notifications:", error);
   }
 }
