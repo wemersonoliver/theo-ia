@@ -5,6 +5,7 @@ import { useConversations } from "@/hooks/useConversations";
 import { useAIConfig } from "@/hooks/useAIConfig";
 import { MessageSquare, Smartphone, Bot, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { TutorialPopup } from "@/components/TutorialPopup";
 
 export default function Dashboard() {
   const { instance } = useWhatsAppInstance();
@@ -64,6 +65,7 @@ export default function Dashboard() {
       title="Dashboard" 
       description="Visão geral do seu sistema de atendimento"
     >
+      <TutorialPopup />
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <Card key={index}>

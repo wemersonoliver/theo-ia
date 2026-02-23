@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth";
-import { Key, User, Loader2, Sun, Moon, Bell } from "lucide-react";
+import { Key, User, Loader2, Sun, Moon, Bell, PlayCircle } from "lucide-react";
 import { NotificationsTab } from "@/components/settings/NotificationsTab";
+import { TutorialTab } from "@/components/settings/TutorialTab";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
@@ -91,6 +92,7 @@ export default function Settings() {
           <TabsTrigger value="notifications" className="min-w-fit">Notificações</TabsTrigger>
           <TabsTrigger value="appearance" className="min-w-fit">Aparência</TabsTrigger>
           <TabsTrigger value="security" className="min-w-fit">Segurança</TabsTrigger>
+          <TabsTrigger value="tutorial" className="min-w-fit">Tutorial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -207,6 +209,10 @@ export default function Settings() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="tutorial">
+          <TutorialTab />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
