@@ -293,6 +293,20 @@ export default function LandingPage() {
           <p>© {new Date().getFullYear()} Theo IA. Todos os direitos reservados.</p>
         </div>
       </footer>
+
+      {/* Balão flutuante WhatsApp */}
+      <a
+        href="https://wa.me/5547984863023"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-full bg-[#25D366] pl-5 pr-6 py-3 text-white shadow-xl transition-transform hover:scale-105 animate-in slide-in-from-bottom-4 duration-500"
+      >
+        <MessageSquare className="h-6 w-6 shrink-0" />
+        <span className="text-sm font-semibold leading-tight">
+          Está com dúvidas?<br />
+          <span className="font-normal">Fale agora com nossa equipe!</span>
+        </span>
+      </a>
     </div>
   );
 }
