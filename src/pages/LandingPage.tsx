@@ -35,7 +35,8 @@ const features = [
   { icon: Bell, title: "Lembretes Automáticos", desc: "Envie lembretes de compromissos e reduza faltas em até 80%." },
   { icon: CheckCircle2, title: "Confirmação por IA", desc: "Confirme agendamentos automaticamente com seus clientes." },
   { icon: Bot, title: "Múltiplas Conversas", desc: "Atenda dezenas de clientes simultaneamente sem perder qualidade." },
-  { icon: Star, title: "Entrevista Inteligente", desc: "Um consultor de IA cria o prompt perfeito para seu negócio — vendas, pré-atendimento ou suporte." },
+  { icon: Star, title: "Configuração via Chat", desc: "Um consultor de IA conversa com você, entende seu negócio e cria o prompt perfeito de atendimento — sem esforço." },
+  { icon: Zap, title: "Ajustes com IA", desc: "Teste seu agente em tempo real e receba sugestões inteligentes para melhorar o atendimento automaticamente." },
   { icon: BarChart3, title: "Dashboard Completo", desc: "Acompanhe métricas, relatórios e o desempenho do seu atendimento." },
 ];
 
@@ -56,7 +57,8 @@ const faqItems = [
   { q: "A IA substitui completamente o atendimento humano?", a: "A IA cuida do primeiro atendimento, qualificação e agendamentos. Quando necessário, transfere a conversa para um humano de forma transparente." },
   { q: "Quantos números de WhatsApp posso conectar?", a: "Você pode conectar seu número principal de WhatsApp e gerenciar todas as conversas pelo painel." },
   { q: "Como a IA aprende sobre meu negócio?", a: "Você alimenta a base de conhecimento com documentos, textos e informações sobre seus serviços. A IA usa isso para responder com precisão." },
-  { q: "O que é a Entrevista Inteligente?", a: "É um consultor de IA que faz perguntas sobre seu negócio e cria automaticamente o prompt perfeito de atendimento — adaptado para vendas, pré-atendimento, agendamentos ou suporte." },
+  { q: "O que é a Configuração via Chat?", a: "É um consultor de IA que conversa com você, faz perguntas sobre seu negócio e gera automaticamente o prompt ideal de atendimento — adaptado para vendas, pré-atendimento, agendamentos ou suporte." },
+  { q: "Como funcionam os Ajustes com IA?", a: "Você pode testar seu agente em um simulador e, ao lado, uma IA analisa a conversa em tempo real, sugere melhorias e pode aplicar ajustes no prompt automaticamente — tudo sem sair do painel." },
 ];
 
 const included = [
@@ -68,7 +70,8 @@ const included = [
   "Confirmação de agendamentos",
   "Múltiplas conversas simultâneas",
   "Dashboard com métricas",
-  "Entrevista IA para criar seu prompt ideal",
+  "Configuração do agente via chat com IA",
+  "Ajustes inteligentes com simulador + IA",
   "Suporte por WhatsApp",
   "Atualizações gratuitas",
 ];
