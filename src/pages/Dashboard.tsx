@@ -1,16 +1,19 @@
+import { useState } from "react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWhatsAppInstance } from "@/hooks/useWhatsAppInstance";
 import { useConversations } from "@/hooks/useConversations";
 import { useAIConfig } from "@/hooks/useAIConfig";
-import { MessageSquare, Smartphone, Bot, TrendingUp } from "lucide-react";
+import { MessageSquare, Smartphone, Bot, TrendingUp, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { TutorialPopup } from "@/components/TutorialPopup";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { instance } = useWhatsAppInstance();
   const { conversations } = useConversations();
   const { config } = useAIConfig();
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   const todayMessages = conversations.reduce((total, conv) => {
     const todayMsgs = (conv.messages || []).filter((msg) => {
@@ -65,7 +68,15 @@ export default function Dashboard() {
       title="Dashboard" 
       description="Visão geral do seu sistema de atendimento"
     >
-      <TutorialPopup />
+      <TutorialPopup externalOpen={tutorialOpen} onExternalClose={() => setTutorialOpen(false)} />
+      
+      <div className="flex justify-end mb-4">
+        <Button variant="outline" onClick={() => setTutorialOpen(true)} className="gap-2">
+          <PlayCircle className="h-4 w-4" />
+          Tutorial
+        </Button>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <Card key={index}>

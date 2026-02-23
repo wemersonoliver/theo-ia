@@ -9,30 +9,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { X } from "lucide-react";
 
 const STORAGE_KEY = "tutorial_popup_dismissed";
 
-export function TutorialPopup() {
-  const [open, setOpen] = useState(false);
+interface TutorialPopupProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+}
+
+export function TutorialPopup({ externalOpen, onExternalClose }: TutorialPopupProps) {
+  const [autoOpen, setAutoOpen] = useState(false);
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  const isOpen = externalOpen ?? autoOpen;
+
   useEffect(() => {
-    const dismissed = localStorage.getItem(STORAGE_KEY);
-    if (!dismissed) {
-      setOpen(true);
+    if (externalOpen === undefined) {
+      const dismissed = localStorage.getItem(STORAGE_KEY);
+      if (!dismissed) setAutoOpen(true);
     }
-  }, []);
+  }, [externalOpen]);
 
   const handleClose = () => {
     if (dontShowAgain) {
       localStorage.setItem(STORAGE_KEY, "true");
     }
-    setOpen(false);
+    setAutoOpen(false);
+    onExternalClose?.();
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+    <Dialog open={isOpen} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent className="sm:max-w-[640px] p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-4 pb-2">
           <DialogTitle className="text-lg">🎓 Tutorial - Como usar o sistema</DialogTitle>
