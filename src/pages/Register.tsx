@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 export default function Register() {
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,9 +19,13 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone.replace(/\D/g, "").match(/^\d{10,11}$/)) {
+      toast.error("Informe um telefone válido com DDD (ex: 47999999999)");
+      return;
+    }
     setLoading(true);
 
-    const { error } = await signUp(email, password, fullName);
+    const { error } = await signUp(email, password, fullName, phone.replace(/\D/g, ""));
 
     if (error) {
       toast.error("Erro ao criar conta: " + error.message);
@@ -56,6 +61,17 @@ export default function Register() {
                 placeholder="João Silva"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="47999999999"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 required
               />
             </div>
