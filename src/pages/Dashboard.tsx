@@ -156,10 +156,6 @@ export default function Dashboard() {
                 <div className={`h-3 w-3 rounded-full ${config?.custom_prompt ? "bg-accent" : "bg-muted"}`} />
                 <span>Configurar Agente IA</span>
               </div>
-              <div className="flex items-center gap-3">
-                <div className={`h-3 w-3 rounded-full ${config?.pre_service_active ? "bg-accent" : "bg-muted"}`} />
-                <span>Ativar Pré-Atendimento</span>
-              </div>
             </div>
           </CardContent>
         </Card>
