@@ -60,6 +60,7 @@ serve(async (req) => {
           id: u.id,
           email: u.email,
           full_name: profile?.full_name || "",
+          phone: profile?.phone || "",
           is_blocked: profile?.is_blocked || false,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
@@ -162,7 +163,6 @@ serve(async (req) => {
       });
     }
 
-    throw new Error("Invalid action");
     throw new Error("Invalid action");
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {

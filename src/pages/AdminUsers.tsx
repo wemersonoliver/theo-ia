@@ -29,6 +29,7 @@ interface AdminUser {
   id: string;
   email: string;
   full_name: string;
+  phone: string;
   is_blocked: boolean;
   created_at: string;
   last_sign_in_at: string | null;
@@ -141,6 +142,7 @@ export default function AdminUsers() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Telefone</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Cadastro</TableHead>
@@ -153,6 +155,7 @@ export default function AdminUsers() {
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                       <TableCell>{u.email}</TableCell>
+                      <TableCell>{u.phone || "—"}</TableCell>
                       <TableCell>
                         {u.roles.map((r) => (
                           <Badge
