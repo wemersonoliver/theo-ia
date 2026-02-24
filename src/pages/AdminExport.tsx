@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Download, Database, Users, HardDrive, Bot, Calendar, MessageSquare, FileText, Shield, Bell, Settings, Wand2 } from "lucide-react";
+import { Loader2, Download, Database, Users, HardDrive, Bot, Calendar, MessageSquare, FileText, Shield, Bell, Settings, Wand2, ArrowRightLeft, CheckCircle, XCircle } from "lucide-react";
 import { Navigate } from "react-router-dom";
 
 interface ExportItem {
@@ -74,6 +74,8 @@ export default function AdminExport() {
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [migrating, setMigrating] = useState<string | null>(null);
+  const [migrationLog, setMigrationLog] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -114,6 +116,22 @@ export default function AdminExport() {
     setExporting(null);
   };
 
+  const handleMigration = async (action: string, label: string) => {
+    setMigrating(action);
+    setMigrationLog(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("migrate-data", {
+        body: { action },
+      });
+      if (error) throw error;
+      setMigrationLog(data);
+      toast({ title: "Migração concluída!", description: `${label} finalizado com sucesso.` });
+    } catch (err: any) {
+      toast({ title: "Erro na migração", description: err.message || "Falha", variant: "destructive" });
+    }
+    setMigrating(null);
+  };
+
   if (loading) {
     return (
       <DashboardLayout title="Exportação" description="">
@@ -131,6 +149,67 @@ export default function AdminExport() {
   return (
     <DashboardLayout title="Exportação de Dados" description="Exporte os dados de cada tabela em CSV para importação externa">
       <div className="space-y-8">
+        {/* Migration Section */}
+        <div>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <ArrowRightLeft className="h-5 w-5 text-primary" />
+            Migração para Novo Banco
+          </h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Transfira todos os dados diretamente para o novo projeto via API.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { action: "migrate_users", label: "Migrar Usuários", desc: "Recria contas de usuários no novo banco (senha temporária)", icon: Users },
+              { action: "migrate_tables", label: "Migrar Tabelas", desc: "Transfere todos os dados das tabelas públicas", icon: Database },
+              { action: "migrate_all", label: "Migrar Tudo", desc: "Usuários + todas as tabelas de uma vez", icon: ArrowRightLeft },
+            ].map((m) => (
+              <Card key={m.action} className="flex flex-col justify-between border-primary/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <m.icon className="h-4 w-4 text-primary" />
+                    {m.label}
+                  </CardTitle>
+                  <CardDescription className="text-xs">{m.desc}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    disabled={!!migrating}
+                    onClick={() => handleMigration(m.action, m.label)}
+                  >
+                    {migrating === m.action ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ArrowRightLeft className="mr-2 h-4 w-4" />
+                    )}
+                    {migrating === m.action ? "Migrando..." : "Iniciar"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {migrationLog && (
+            <Card className="mt-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  Resultado da Migração
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="whitespace-pre-wrap text-xs bg-muted p-3 rounded max-h-64 overflow-auto">
+                  {JSON.stringify(migrationLog, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Separator */}
+        <div className="border-t border-border" />
         {categories.map((cat) => (
           <div key={cat}>
             <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
