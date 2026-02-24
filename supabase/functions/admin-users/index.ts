@@ -42,7 +42,8 @@ serve(async (req) => {
       });
     }
 
-    const { action, userId, password } = await req.json();
+    const body = await req.json();
+    const { action, userId, password, tableName } = body;
 
     if (action === "list_users") {
       const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
@@ -107,6 +108,61 @@ serve(async (req) => {
       });
     }
 
+    if (action === "export_table") {
+      // tableName already extracted from body above
+      
+      const allowedTables = [
+        "profiles", "user_roles", "contacts", "whatsapp_instances",
+        "whatsapp_ai_config", "whatsapp_ai_sessions", "whatsapp_conversations",
+        "whatsapp_pending_responses", "appointments", "appointment_slots",
+        "notification_contacts", "knowledge_base_documents", "entrevistas_config",
+        "platform_settings",
+      ];
+
+      if (!tableName || !allowedTables.includes(tableName)) {
+        return new Response(JSON.stringify({ error: "Invalid table name" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data, error } = await supabaseAdmin.from(tableName).select("*");
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ data: data || [], tableName }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "export_auth_users") {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (error) throw error;
+
+      const exportUsers = users.map((u) => ({
+        id: u.id,
+        email: u.email,
+        phone: u.phone,
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at,
+        email_confirmed_at: u.email_confirmed_at,
+        banned_until: u.banned_until,
+      }));
+
+      return new Response(JSON.stringify({ data: exportUsers, tableName: "auth_users" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "export_storage_objects") {
+      const { data, error } = await supabaseAdmin.storage.from("knowledge-base").list("", { limit: 1000 });
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ data: data || [], tableName: "storage_objects" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    throw new Error("Invalid action");
     throw new Error("Invalid action");
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
