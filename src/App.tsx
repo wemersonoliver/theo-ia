@@ -18,6 +18,7 @@ import Appointments from "./pages/Appointments";
 import AppointmentSettings from "./pages/AppointmentSettings";
 import Settings from "./pages/Settings";
 import AdminUsers from "./pages/AdminUsers";
+import AdminExport from "./pages/AdminExport";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/appointment-settings" element={<ProtectedRoute><AppointmentSettings /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+              <Route path="/admin/export" element={<ProtectedRoute><AdminExport /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

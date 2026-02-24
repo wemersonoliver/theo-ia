@@ -16,6 +16,7 @@ import {
   CalendarCog,
   ShieldCheck,
   Users,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -57,7 +58,11 @@ export function Sidebar({ mobile, onNavigate }: SidebarProps) {
   }, [user]);
 
   const allNavItems = isSuperAdmin
-    ? [...navItems, { to: "/admin", icon: ShieldCheck, label: "Administração" }]
+    ? [
+        ...navItems,
+        { to: "/admin", icon: ShieldCheck, label: "Administração" },
+        { to: "/admin/export", icon: Download, label: "Exportar Dados" },
+      ]
     : navItems;
 
   // Em mobile, sempre mostrar expandido
